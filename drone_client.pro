@@ -1,0 +1,59 @@
+ROOT_DIR=./
+
+TEMPLATE = app
+TARGET = drone_client
+
+include($${ROOT_DIR}pri/common.pri)
+
+CONFIG += link_pkgconfig
+PKGCONFIG += glib-2.0 gstreamer-1.0 gstreamer-app-1.0 opencv
+
+QT += core gui serialport network
+
+QMAKE_CXXFLAGS += -Wno-unused-parameter
+QMAKE_CXXFLAGS += -Wno-unused-variable
+
+DEFINES += \
+    QT_NO_VERSION_TAGGING
+
+LIBS += \
+    -lboost_regex \
+    -lboost_system \
+    -lboost_filesystem \
+    -lexiv2 \
+    -lprotobuf_old \
+    -lobjrepr \
+    -lunilog \
+    -lowlgroundcontrol \
+
+INCLUDEPATH += \
+    $${ROOT_DIR}/nppntt \
+
+SOURCES += main.cpp \
+    drone_client.cpp \
+    video_generator.cpp \
+    image_from_drone.cpp \
+    image_from_file.cpp \
+    drone_controller.cpp \
+    control_signal_receiver.cpp
+
+# The following define makes your compiler emit warnings if you use
+# any feature of Qt which as been marked deprecated (the exact warnings
+# depend on your compiler). Please consult the documentation of the
+# deprecated API in order to know how to port your code away from it.
+DEFINES += QT_DEPRECATED_WARNINGS
+
+# You can also make your code fail to compile if you use deprecated APIs.
+# In order to do so, uncomment the following line.
+# You can also select to disable deprecated APIs only up to a certain version of Qt.
+#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+HEADERS += \
+    drone_client.h \
+    video_generator.h \
+    common_stuff.h \
+    common_utils.h \
+    image_from_drone.h \
+    image_from_file.h \
+    drone_controller.h \
+    control_signal_receiver.h
