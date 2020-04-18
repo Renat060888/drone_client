@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <mutex>
+#include <thread>
 
 #include "common_stuff.h"
 
@@ -15,6 +16,7 @@ public:
     };
 
     struct SImage {
+        std::string fileName;
         int64_t capturedAtTimeMillisec;
         std::vector<char> imageBytes;
         std::pair<TConstDataPointer, TDataSize> imageMetadata;
@@ -34,13 +36,16 @@ public:
     ImageFromFile();
 
     bool init( const SInitSettings & _settings );
-    void tick();
 
     virtual std::pair<TConstDataPointer, TDataSize> getImageData() override;
     virtual SImageProperties getImageProperties() override;
 
 
 private:
+    void threadImageRotation();
+
+    void tick();
+
     bool createImageTimeline( const std::string & _imageDir );
     SImage * loadImage( const std::string & _imagePath );
 
@@ -48,15 +53,14 @@ private:
     // data
     const SImage * m_currentImageRef;
     int32_t m_currentSecondIdx;
-    int32_t m_currentImageIdx;
+    int32_t m_currentFrameIdx;
     std::vector<SOneSecondImages> m_imagesBySeconds;
     SState m_state;
 
 
     // service
     std::mutex m_mutexImageRef;
-
-
+    std::thread * m_trImageRotation;
 };
 
 #endif // IMAGE_FROM_FILE_H

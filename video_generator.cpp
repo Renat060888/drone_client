@@ -3,9 +3,6 @@
 #include <gst/app/gstappsink.h>
 #include <boost/format.hpp>
 
-//#include <video_server_common/common/common_utils.h>
-//#include <video_server_common/system/logger.h>
-
 #include "video_generator.h"
 #include "common_stuff.h"
 #include "common_utils.h"
@@ -13,7 +10,7 @@
 using namespace std;
 
 static constexpr const char * PRINT_HEADER = "VideoGenerator:";
-static constexpr const gint SAMPLE_RATE = 10;
+static constexpr const gint SAMPLE_RATE = 120;
 
 VideoGenerator::VideoGenerator()
     : m_gstPipeline(nullptr)
@@ -132,7 +129,7 @@ gboolean VideoGenerator::callbackPushData( gpointer * _data ){
     SDataForTransfer * data = ( SDataForTransfer * )_data;
 
     const std::pair<TConstDataPointer, TDataSize> & imgData = data->dataSettings->imageProvider->getImageData();
-    int32_t bytesCount = imgData.second;
+    const int32_t bytesCount = imgData.second;
     const void * dataSrc = imgData.first;
 
     static constexpr gint SAMPLES_NUM = 1;    
@@ -234,7 +231,8 @@ std::string VideoGenerator::definePipelineDescription( const SInitSettings & _se
     const string source =
         ( boost::format( "appsrc name=images_src format=bytes do-timestamp=true caps=image/jpeg,framerate=%4%/1,stream-format=byte-stream,width=%2%,height=%3%" // JUST IN CASE:
                          " ! rtpjpegpay pt=26 name=pay0" // JUST IN CASE: mtu=65000
-                         " ! udpsink host=127.0.0.1 port=%1% sync=true enable-last-sample=false send-duplicates=false " // JUST IN CASE: sync=true enable-last-sample=false send-duplicates=false
+//                         " ! udpsink host=127.0.0.1 port=%1% sync=true enable-last-sample=false send-duplicates=false " // JUST IN CASE: sync=true enable-last-sample=false send-duplicates=false
+                         " ! udpsink host=224.7.7.7 port=%1% auto-multicast=true sync=true enable-last-sample=false send-duplicates=false " // JUST IN CASE: sync=true enable-last-sample=false send-duplicates=false
                        )
         % _settings.rtpEmitUdpPort
         % _settings.imageProvider->getImageProperties().width

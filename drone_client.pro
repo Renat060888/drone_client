@@ -35,7 +35,7 @@ SOURCES += main.cpp \
     image_from_drone.cpp \
     image_from_file.cpp \
     drone_controller.cpp \
-    control_signal_receiver.cpp
+    control_signal_receiver.cpp \
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked deprecated (the exact warnings
@@ -56,4 +56,5 @@ HEADERS += \
     image_from_drone.h \
     image_from_file.h \
     drone_controller.h \
-    control_signal_receiver.h
+    control_signal_receiver.h \
+

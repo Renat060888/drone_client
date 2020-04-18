@@ -10,6 +10,7 @@
 
 // How to consume on other side:
 // gst-launch-1.0 udpsrc port=5000 ! application/x-rtp,enconding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink
+// gst-launch-1.0 udpsrc multicast-group=224.7.7.7 port=5000 auto-multicast=true ! application/x-rtp,enconding-name=JPEG,payload=26 ! rtpjpegdepay ! jpegdec ! autovideosink
 
 // NOTE: RFC-2435 ( RTP Payload format for JPEG-comressed video: limit 2040 x 2040 )
 
@@ -35,7 +36,7 @@ public:
         int16_t rtpEmitUdpPort;
         EImageFormat imageFormat;
 
-        IImageProvider * imageProvider;
+        IImageProvider * imageProvider;        
     };
 
     struct SDataForTransfer {

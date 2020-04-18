@@ -9,11 +9,11 @@ int main(int argc, char ** argv ){
 
     QCoreApplication a(argc, argv);
 
-    DroneClient droneClient;
     DroneClient::SInitSettings settings;
-
-    if( droneClient.init(settings) ){
-        droneClient.launch();
+    settings.argc = argc;
+    settings.argv = argv;
+    if( DroneClient::singleton().init(settings) ){
+        DroneClient::singleton().launch();
     }
     else{
         return EXIT_FAILURE;

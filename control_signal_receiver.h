@@ -12,6 +12,10 @@ public:
         uint64_t objectId;
     };
 
+    struct SState {
+        std::string lastError;
+    };
+
     ControlSignalReceiver();
 
     bool init( const SInitSettings & _settings );
@@ -26,6 +30,7 @@ private:
 
 
     // data
+    SState m_state;
     objrepr::DynamicAttributeMapPtr m_attrMap;
     std::vector<IControlSignalsObserver *> m_observers;
 
