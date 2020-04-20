@@ -10,7 +10,7 @@
 using namespace std;
 
 static constexpr const char * PRINT_HEADER = "VideoGenerator:";
-static constexpr const gint SAMPLE_RATE = 120;
+static constexpr const gint SAMPLE_RATE = 20;
 
 VideoGenerator::VideoGenerator()
     : m_gstPipeline(nullptr)

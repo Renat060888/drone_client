@@ -16,6 +16,7 @@ public:
 
     bool init( const SInitSettings & _settings );
 
+
 private:
     virtual void callbackSetTargetCoord(float lat, float lon, int alt) override;
 

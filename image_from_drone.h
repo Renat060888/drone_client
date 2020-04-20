@@ -21,8 +21,10 @@ public:
     virtual std::pair<TConstDataPointer, TDataSize> getImageData() override;
     virtual SImageProperties getImageProperties() override;
 
+
 private slots:
     void slotFrameChanged( QImage _frame );
+
 
 private:
 

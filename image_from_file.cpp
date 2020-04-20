@@ -29,7 +29,7 @@ bool ImageFromFile::init( const SInitSettings & _settings ){
         return false;
     }
 
-    m_trImageRotation = new std::thread( & ImageFromFile::threadImageRotation, this );
+//    m_trImageRotation = new std::thread( & ImageFromFile::threadImageRotation, this );
 
 
     return true;
@@ -181,8 +181,23 @@ std::pair<TConstDataPointer, TDataSize> ImageFromFile::getImageData(){
 
     std::pair<TConstDataPointer, TDataSize> out;
     m_mutexImageRef.lock();
-    out = m_currentImageRef->imageMetadata;
+
+    // 1st version
+//    out = m_currentImageRef->imageMetadata;
 //    VS_LOG_INFO << "requested image file: " << m_currentImageRef->fileName << endl;
+
+    // 2nd version
+    SOneSecondImages & second = m_imagesBySeconds[ m_currentSecondIdx ];
+    out = second.images[ m_currentFrameIdx ]->imageMetadata;
+
+    // move indexes
+    m_currentFrameIdx++;
+    if( m_currentFrameIdx == second.images.size() ){
+        m_currentFrameIdx = 0;
+
+        m_currentSecondIdx = ++m_currentSecondIdx % m_imagesBySeconds.size();
+    }
+
     m_mutexImageRef.unlock();
     return out;
 }

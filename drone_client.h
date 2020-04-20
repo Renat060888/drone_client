@@ -33,6 +33,7 @@ public:
     ControlSignalReceiver m_controlSignalReceiver;
     DroneController m_droneController;
 
+
 private:
     DroneClient( const DroneClient & _rhs ) = delete;
     DroneClient & operator=( const DroneClient & _rhs ) = delete;

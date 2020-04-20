@@ -15,6 +15,7 @@ QMAKE_CXXFLAGS += -Wno-unused-variable
 
 DEFINES += \
     QT_NO_VERSION_TAGGING
+#    OBJREPR_LIBRARY_EXIST \
 
 LIBS += \
     -lboost_regex \
@@ -22,9 +23,14 @@ LIBS += \
     -lboost_filesystem \
     -lexiv2 \
     -lprotobuf_old \
-    -lobjrepr \
-    -lunilog \
     -lowlgroundcontrol \
+
+contains( DEFINES, OBJREPR_LIBRARY_EXIST ){
+    message("connect 'unilog' and 'objrepr' libraries")
+LIBS += \
+    -lunilog \
+    -lobjrepr
+}
 
 INCLUDEPATH += \
     $${ROOT_DIR}/nppntt \

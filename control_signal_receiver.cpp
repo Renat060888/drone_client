@@ -27,7 +27,7 @@ ControlSignalReceiver::ControlSignalReceiver()
 }
 
 void ControlSignalReceiver::callbackAttrUpdated( const std::string & _attrName ){
-
+#ifdef OBJREPR_LIBRARY_EXIST
     cout << "attr updated: " << _attrName << endl;
 
     // ------------------------------------------------------------
@@ -159,6 +159,7 @@ void ControlSignalReceiver::callbackAttrUpdated( const std::string & _attrName )
     else{
         // TODO: catch error
     }
+#endif
 }
 
 void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
@@ -171,7 +172,7 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
 }
 
 bool ControlSignalReceiver::init( const SInitSettings & _settings ){
-
+#ifdef OBJREPR_LIBRARY_EXIST
     // TODO: from MS-Common
     const bool configured = objrepr::RepresentationServer::instance()->configure( "/home/renat/.config/drone_client/objrepr_cfg.xml" );
     if( ! configured ){
@@ -215,7 +216,7 @@ bool ControlSignalReceiver::init( const SInitSettings & _settings ){
     attrMap->refreshAsync();
 
     m_attrMap = attrMap;
-
+#endif
 
 
     return true;

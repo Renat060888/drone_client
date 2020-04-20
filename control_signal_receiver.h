@@ -1,7 +1,11 @@
 #ifndef CONTROL_SIGNAL_RECEVIER_H
 #define CONTROL_SIGNAL_RECEVIER_H
 
+#include <vector>
+
+#ifdef OBJREPR_LIBRARY_EXIST
 #include <objrepr/reprServer.h>
+#endif
 
 #include "common_stuff.h"
 
@@ -31,8 +35,10 @@ private:
 
     // data
     SState m_state;
-    objrepr::DynamicAttributeMapPtr m_attrMap;
     std::vector<IControlSignalsObserver *> m_observers;
+#ifdef OBJREPR_LIBRARY_EXIST
+    objrepr::DynamicAttributeMapPtr m_attrMap;
+#endif
 
 
 };
