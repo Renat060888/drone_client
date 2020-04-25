@@ -30,6 +30,8 @@ public:
 private:
     void callbackAttrUpdated( const std::string & _attrName );
     void callbackApprovePending( std::string _attrName );
+    void callbackRequestCompleted( int32_t _id );
+    void callbackRequestFailed( int32_t _id );
 
 
 

@@ -14,8 +14,8 @@ QMAKE_CXXFLAGS += -Wno-unused-parameter
 QMAKE_CXXFLAGS += -Wno-unused-variable
 
 DEFINES += \
-    QT_NO_VERSION_TAGGING
-#    OBJREPR_LIBRARY_EXIST \
+    QT_NO_VERSION_TAGGING \
+    OBJREPR_LIBRARY_EXIST \
 
 LIBS += \
     -lboost_regex \

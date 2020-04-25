@@ -22,15 +22,14 @@ bool DroneClient::init( const SInitSettings & _settings ){
     setenv( "G_MESSAGES_DEBUG", "", 0 );
     gst_init( & const_cast<SInitSettings &>(_settings).argc, & const_cast<SInitSettings &>(_settings).argv );
 
+    //
+    ControlSignalReceiver::SInitSettings sigRecSettings;
+    sigRecSettings.objectId = 18048399;
+    if( ! m_controlSignalReceiver.init(sigRecSettings) ){
+        return false;
+    }
 
-//    //
-//    ControlSignalReceiver::SInitSettings sigRecSettings;
-//    sigRecSettings.objectId = 18048399;
-//    if( ! m_controlSignalReceiver.init(sigRecSettings) ){
-//        return false;
-//    }
-
-//    return true;
+    return true;
 
 //    //
 //    ImageFromDrone * imageProvider2 = new ImageFromDrone();

@@ -162,13 +162,26 @@ void ControlSignalReceiver::callbackAttrUpdated( const std::string & _attrName )
 #endif
 }
 
+void ControlSignalReceiver::callbackRequestCompleted( int32_t _id ){
+
+    VS_LOG_INFO << "callbackRequestCompleted" << endl;
+}
+
+void ControlSignalReceiver::callbackRequestFailed( int32_t _id ){
+
+    VS_LOG_INFO << "callbackRequestFailed" << endl;
+}
+
 void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
 
+    VS_LOG_INFO << "callbackApprovePending: " << _attrName << endl;
 
+    if( "active_hold_point" == _attrName ){
+        objrepr::DynIntegerAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynIntegerAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
+        attr->approve();
 
-
-
-
+        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+    }
 }
 
 bool ControlSignalReceiver::init( const SInitSettings & _settings ){
@@ -201,24 +214,18 @@ bool ControlSignalReceiver::init( const SInitSettings & _settings ){
     }
 
     // listen attrs changing
-    objrepr::DynamicAttributeMapPtr attrMap = droneObject->classinfo()->phm()->instanceAttrMap();
-//    objrepr::DynamicAttributeMapPtr attrMap = droneObject->dynamicAttrMap();
+//    objrepr::DynamicAttributeMapPtr attrMap = droneObject->classinfo()->phm()->instanceAttrMap();
+    objrepr::DynamicAttributeMapPtr attrMap = droneObject->dynamicAttrMap();
 
     attrMap->approvePending.connect( boost::bind( & ControlSignalReceiver::callbackApprovePending, this, _1 ) );
     attrMap->attrUpdated.connect( boost::bind( & ControlSignalReceiver::callbackAttrUpdated, this, _1 ) );
-
-//    const bool holdSuccess = attrMap->holderAlive();
-//    const string holderHost = attrMap->holderHost();
-//    const bool subscribeSuccess = attrMap->subscribe();
+    attrMap->reqCompleted.connect( boost::bind( & ControlSignalReceiver::callbackRequestCompleted, this, _1 ) );
+    attrMap->reqFailed.connect( boost::bind( & ControlSignalReceiver::callbackRequestFailed, this, _1 ) );
 
     attrMap->getHold();
 
-    attrMap->refreshAsync();
-
     m_attrMap = attrMap;
 #endif
-
-
     return true;
 }
 
@@ -227,7 +234,7 @@ mode                    observation		чтение и запись		Перечи�
 azimut                  0 	гр.         чтение              Вещественное число
 elevation               0 	гр.         чтение              Вещественное число
 focal_length            3,6	мм.         чтение              Вещественное число
-want_azimut             0 	гр.         чтение и запись		Вещественное число
+want_azimut             protected0 	гр.         чтение и запись		Вещественное число
 want_elevation          0 	гр.         чтение и запись		Вещественное число
 elevation_change_rate	0               чтение и запись		Вещественное число
 azimut_change_rate      0               чтение и запись		Вещественное число
