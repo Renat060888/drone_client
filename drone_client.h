@@ -11,27 +11,19 @@ class DroneClient
 {
 public:
     struct SInitSettings {
-        int argc;
-        char ** argv;
     };
 
-    static DroneClient & singleton(){
-        static DroneClient instance;
+    static DroneClient * singleton(){
+        static DroneClient * instance = nullptr;
+
+        if( ! instance ){
+            instance = new DroneClient();
+        }
         return instance;
     }
 
     bool init( const SInitSettings & _settings );
     void launch();
-
-
-    // data
-    std::vector<char> m_imageBytes;
-
-    // service
-    VideoGenerator m_videoGenerator;
-    IImageProvider * m_imageProvider;
-    ControlSignalReceiver m_controlSignalReceiver;
-    DroneController m_droneController;
 
 
 private:
@@ -41,8 +33,13 @@ private:
     DroneClient();
     ~DroneClient();
 
+    // data
 
-
+    // service
+    VideoGenerator m_videoGenerator;
+    IImageProvider * m_imageProvider;
+    ControlSignalReceiver m_controlSignalReceiver;
+    DroneController m_droneController;
 };
 
 #endif // DRONE_CLIENT_H

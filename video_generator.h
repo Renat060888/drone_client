@@ -32,9 +32,12 @@ public:
             : imageFormat(EImageFormat::UNDEFINED)
             , rtpEmitUdpPort(0)
             , imageProvider(nullptr)
+            , enableMulticast(false)
         {}
+        bool enableMulticast;
+        std::string rtpEmitIp;
         int16_t rtpEmitUdpPort;
-        EImageFormat imageFormat;
+        EImageFormat imageFormat;        
 
         IImageProvider * imageProvider;        
     };

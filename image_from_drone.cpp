@@ -2,6 +2,7 @@
 #include <QFile>
 #include <QBuffer>
 #include <QJsonParseError>
+#include "from_ms_common/system/logger.h"
 
 #include "image_from_drone.h"
 
@@ -10,6 +11,13 @@ using namespace std;
 ImageFromDrone::ImageFromDrone()
     : m_frameDescr(nullptr)
 {
+    QObject::connect( & rfv, SIGNAL(lastFrameChanged(QByteArray &)),
+                     this, SLOT(slotLastFrameChanged(QByteArray &))
+                    );
+}
+
+ImageFromDrone::~ImageFromDrone(){
+
 
 }
 
@@ -33,12 +41,10 @@ bool ImageFromDrone::init( const SInitSettings & _settings ){
 
     rfv.startAsync();
 
-
-
     return true;
 }
 
-void ImageFromDrone::slotFrameChanged( QImage _frame ){
+void ImageFromDrone::slotLastFrameChanged( QByteArray & _frame ){
 
     m_mutexImageRef.lock();
     m_droneCurrentFrame = _frame;
@@ -47,13 +53,7 @@ void ImageFromDrone::slotFrameChanged( QImage _frame ){
     m_mutexImageDescrRef.lock();
     if( ! m_frameDescr ){
         m_frameDescr = new OwlDeviceInputData::OwlDeviceFrameDescriptor();
-
-        QByteArray array;
-        QBuffer buf( & array );
-        buf.open( QIODevice::WriteOnly );
-        _frame.save( & buf, "yourformat" );
-
-        ( * m_frameDescr ) = rfv.parseFrameDescriptor( array );
+        ( * m_frameDescr ) = rfv.parseFrameDescriptor( _frame );
     }
     m_mutexImageDescrRef.unlock();
 }
@@ -63,8 +63,20 @@ std::pair<TConstDataPointer, TDataSize> ImageFromDrone::getImageData(){
     std::pair<TConstDataPointer, TDataSize> out;
 
     m_mutexImageRef.lock();
-    out.first = m_droneCurrentFrame.data_ptr();
-    out.second = m_droneCurrentFrame.byteCount();
+    out.first = m_droneCurrentFrame.data();
+    out.second = m_droneCurrentFrame.size();
+
+    // text overlay
+    if( m_settings.statusOverlay ){
+//        cv::imdecode( m_droneCurrentFrame, 1, & m_currentImage );
+//        constexpr int fontScale = 1;
+//        cv::putText( m_currentImage, "ONLINE [FPS 20.0]", cv::Point2f(30, m_frameDescr->frameHeight() - 30), cv::FONT_HERSHEY_TRIPLEX, fontScale, cv::Scalar(0, 255, 0, 0) );
+//        m_currentImageBytes.clear();
+//        cv::imencode( ".jpg", m_currentImage, m_currentImageBytes );
+//        out.first = m_currentImageBytes.data();
+//        out.second = m_currentImageBytes.size();
+    }
+
     m_mutexImageRef.unlock();
 
     return out;

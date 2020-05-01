@@ -1,7 +1,10 @@
 
-#include <opencv2/opencv.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
+#include "from_ms_common/system/logger.h"
+
+#include <QImage>
+#include <QBuffer>
 
 #include "image_from_file.h"
 #include "common_utils.h"
@@ -30,7 +33,6 @@ bool ImageFromFile::init( const SInitSettings & _settings ){
     }
 
 //    m_trImageRotation = new std::thread( & ImageFromFile::threadImageRotation, this );
-
 
     return true;
 }
@@ -112,10 +114,12 @@ bool ImageFromFile::createImageTimeline( const std::string & _imageDir ){
 
     // frame parameters
     const SOneSecondImages & firstSecond = m_imagesBySeconds.front();
-    const cv::Mat imageFromBase64 = cv::imdecode( firstSecond.images[ 0 ]->imageBytes, 1 );
+    std::vector<char> vecForParams( firstSecond.images[ 0 ]->imageBytes.begin(), firstSecond.images[ 0 ]->imageBytes.end() );
 
-    m_state.imageProps.width = imageFromBase64.cols;
-    m_state.imageProps.height = imageFromBase64.rows;
+    const cv::Mat decodedImage = cv::imdecode( vecForParams, 1 );
+
+    m_state.imageProps.width = decodedImage.cols;
+    m_state.imageProps.height = decodedImage.rows;
 
     return true;
 }
@@ -124,7 +128,8 @@ ImageFromFile::SImage * ImageFromFile::loadImage( const std::string & _imagePath
 
     SImage * image = new SImage();
 
-    // data
+    // data ( std )
+#if 0
     ifstream file( _imagePath, ios::binary | ios::ate );
 
     file.seekg( 0, ios::end );
@@ -133,6 +138,13 @@ ImageFromFile::SImage * ImageFromFile::loadImage( const std::string & _imagePath
 
     file.seekg( 0, ios::beg );
     file.read( & image->imageBytes[ 0 ], bytesCount );
+#else
+    // data ( Qt )
+    QImage img( QString(_imagePath.c_str()) );
+    QBuffer buf( & image->imageBytes );
+    buf.open( QIODevice::WriteOnly );
+    img.save( & buf, "JPG" );
+#endif
 
     // meta
     image->imageMetadata.first = image->imageBytes.data();
@@ -158,11 +170,8 @@ void ImageFromFile::tick(){
     if( m_currentFrameIdx < second.images.size() ){
         m_currentImageRef = second.images[ m_currentFrameIdx ];
         second.lastImageIdx = m_currentFrameIdx;
-
-//        VS_LOG_INFO << "image idx: " << m_currentFrameIdx << " file: " << m_currentImageRef->fileName << endl;
     }
     else{
-//        VS_LOG_INFO << "resuse image idx: " << second.lastImageIdx << endl;
         m_currentImageRef = second.images[ second.lastImageIdx ];
     }
 
@@ -172,23 +181,32 @@ void ImageFromFile::tick(){
         m_currentFrameIdx = 0;
 
         m_currentSecondIdx = ++m_currentSecondIdx % m_imagesBySeconds.size();
-
-//        VS_LOG_INFO << "current second is complete, next: " << m_currentSecondIdx << " -------------------------------" << endl;
     }
 }
 
 std::pair<TConstDataPointer, TDataSize> ImageFromFile::getImageData(){
 
     std::pair<TConstDataPointer, TDataSize> out;
-    m_mutexImageRef.lock();
+//    m_mutexImageRef.lock();
 
-    // 1st version
+    // 1st version ( independent cycle )
 //    out = m_currentImageRef->imageMetadata;
 //    VS_LOG_INFO << "requested image file: " << m_currentImageRef->fileName << endl;
 
-    // 2nd version
+    // 2nd version ( on demand )
     SOneSecondImages & second = m_imagesBySeconds[ m_currentSecondIdx ];
     out = second.images[ m_currentFrameIdx ]->imageMetadata;
+
+    // text overlay
+    if( m_state.settings.statusOverlay ){
+//        cv::imdecode( second.images[ m_currentFrameIdx ]->imageBytes, 1, & m_currentImage );
+//        constexpr int fontScale = 1;
+//        cv::putText( m_currentImage, "ONLINE [FPS 20.0]", cv::Point2f(30, m_state.imageProps.height - 30), cv::FONT_HERSHEY_TRIPLEX, fontScale, cv::Scalar(0, 255, 0, 0) );
+//        m_currentImageBytes.clear();
+//        cv::imencode( ".jpg", m_currentImage, m_currentImageBytes );
+//        out.first = m_currentImageBytes.data();
+//        out.second = m_currentImageBytes.size();
+    }
 
     // move indexes
     m_currentFrameIdx++;
@@ -198,7 +216,11 @@ std::pair<TConstDataPointer, TDataSize> ImageFromFile::getImageData(){
         m_currentSecondIdx = ++m_currentSecondIdx % m_imagesBySeconds.size();
     }
 
-    m_mutexImageRef.unlock();
+//    m_mutexImageRef.unlock();
+
+
+
+
     return out;
 }
 

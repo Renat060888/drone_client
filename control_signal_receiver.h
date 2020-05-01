@@ -9,11 +9,12 @@
 
 #include "common_stuff.h"
 
-class ControlSignalReceiver
+class ControlSignalReceiver : public IDroneStateObserver
 {
 public:
     struct SInitSettings {
-        uint64_t objectId;
+        uint64_t cameraObjectId;
+        uint64_t carrierObjectId;
     };
 
     struct SState {
@@ -28,19 +29,27 @@ public:
 
 
 private:
+    // signals from objrepr
     void callbackAttrUpdated( const std::string & _attrName );
     void callbackApprovePending( std::string _attrName );
     void callbackRequestCompleted( int32_t _id );
     void callbackRequestFailed( int32_t _id );
 
+    // signals from drone controller
+    virtual void callbackBoardPositionChanged( double _lat, double _lon, double _alt ) override;
+    virtual void callbackCameraPositionChanged( double _pitch, double _roll, double _zoom ) override;
+
 
 
     // data
-    SState m_state;
     std::vector<IControlSignalsObserver *> m_observers;
+    SState m_state;
 #ifdef OBJREPR_LIBRARY_EXIST
+    objrepr::SpatialObjectPtr m_carrierObject;
     objrepr::DynamicAttributeMapPtr m_attrMap;
 #endif
+
+    // service
 
 
 };

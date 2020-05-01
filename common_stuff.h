@@ -3,13 +3,6 @@
 
 #include <iostream>
 
-#define VS_LOG_WARN std::cerr
-#define VS_LOG_ERROR std::cerr
-#define VS_LOG_CRITICAL std::cerr
-#define VS_LOG_INFO std::cout
-#define VS_LOG_DEBUG std::cerr
-#define VS_LOG_TRACE std::cerr
-
 using TConstDataPointer = const void *;
 using TDataSize = int32_t;
 
@@ -24,6 +17,16 @@ public:
 
     virtual std::pair<TConstDataPointer, TDataSize> getImageData() = 0;
     virtual SImageProperties getImageProperties() = 0;
+};
+
+class IDroneStateObserver {
+public:
+    virtual ~IDroneStateObserver(){}
+
+    virtual void callbackBoardPositionChanged( double _lat, double _lon, double _alt ) = 0;
+    virtual void callbackCameraPositionChanged( double _pitch, double _roll, double _zoom ) = 0;
+
+
 };
 
 class IControlSignalsObserver {

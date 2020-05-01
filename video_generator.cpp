@@ -2,6 +2,7 @@
 #include <gst/app/gstappsrc.h>
 #include <gst/app/gstappsink.h>
 #include <boost/format.hpp>
+#include "from_ms_common/system/logger.h"
 
 #include "video_generator.h"
 #include "common_stuff.h"
@@ -228,13 +229,16 @@ gboolean VideoGenerator::callbackGstSourceMessage( GstBus * _bus, GstMessage * _
 
 std::string VideoGenerator::definePipelineDescription( const SInitSettings & _settings ){
 
+    const string autoMulticastTrue = ( _settings.enableMulticast ? "auto-multicast=true" : "" );
+
     const string source =
-        ( boost::format( "appsrc name=images_src format=bytes do-timestamp=true caps=image/jpeg,framerate=%4%/1,stream-format=byte-stream,width=%2%,height=%3%" // JUST IN CASE:
-                         " ! rtpjpegpay pt=26 name=pay0" // JUST IN CASE: mtu=65000
-//                         " ! udpsink host=127.0.0.1 port=%1% sync=true enable-last-sample=false send-duplicates=false " // JUST IN CASE: sync=true enable-last-sample=false send-duplicates=false
-                         " ! udpsink host=224.7.7.7 port=%1% auto-multicast=true sync=true enable-last-sample=false send-duplicates=false " // JUST IN CASE: sync=true enable-last-sample=false send-duplicates=false
+        ( boost::format( "appsrc name=images_src format=3 do-timestamp=true caps=image/jpeg,framerate=%6%/1,stream-format=byte-stream,width=%4%,height=%5%" // JUST IN CASE:
+                         " ! rtpjpegpay pt=26 name=pay0" // JUST IN CASE: mtu=65000                         
+                         " ! udpsink host=%1% port=%2% %3% sync=true enable-last-sample=false send-duplicates=false " // JUST IN CASE: sync=true enable-last-sample=false send-duplicates=false
                        )
+        % _settings.rtpEmitIp
         % _settings.rtpEmitUdpPort
+        % autoMulticastTrue
         % _settings.imageProvider->getImageProperties().width
         % _settings.imageProvider->getImageProperties().height
         % SAMPLE_RATE

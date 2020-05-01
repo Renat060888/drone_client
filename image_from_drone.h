@@ -3,18 +3,22 @@
 
 #include <mutex>
 
+#include <opencv2/opencv.hpp>
 #include <nppntt/rfgroundvideoprocessing.h>
 
 #include "common_stuff.h"
 
-class ImageFromDrone : public IImageProvider
+class ImageFromDrone : public QObject, public IImageProvider
 {
+Q_OBJECT
 public:
     struct SInitSettings {
         std::string configFilePath;
+        bool statusOverlay;
     };
 
     ImageFromDrone();
+    ~ImageFromDrone();
 
     bool init( const SInitSettings & _settings );
 
@@ -23,14 +27,18 @@ public:
 
 
 private slots:
-    void slotFrameChanged( QImage _frame );
+    void slotLastFrameChanged( QByteArray & _frame );
 
 
 private:
 
     // data
-    QImage m_droneCurrentFrame;
+    QByteArray m_droneCurrentFrame;
     OwlDeviceInputData::OwlDeviceFrameDescriptor * m_frameDescr;
+    SInitSettings m_settings;
+
+    cv::Mat m_currentImage;
+    std::vector<unsigned char> m_currentImageBytes;
 
     // service
     OwlGroudControl::RFGroundVideoProcessing rfv;

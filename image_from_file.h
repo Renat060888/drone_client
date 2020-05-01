@@ -5,20 +5,26 @@
 #include <mutex>
 #include <thread>
 
+#include <QByteArray>
+#include <opencv2/opencv.hpp>
+
 #include "common_stuff.h"
 
 class ImageFromFile : public IImageProvider
 {
+    using TStdBytes = std::vector<char>;
 public:
     struct SInitSettings {
         std::string imageDir;
         int64_t imageCaptureIntervalMilllisec;
+        bool statusOverlay;
     };
 
     struct SImage {
         std::string fileName;
         int64_t capturedAtTimeMillisec;
-        std::vector<char> imageBytes;
+//        std::vector<char> imageBytes;
+        QByteArray imageBytes;
         std::pair<TConstDataPointer, TDataSize> imageMetadata;
     };
 
@@ -56,6 +62,9 @@ private:
     int32_t m_currentFrameIdx;
     std::vector<SOneSecondImages> m_imagesBySeconds;
     SState m_state;
+
+    cv::Mat m_currentImage;
+    std::vector<unsigned char> m_currentImageBytes;
 
 
     // service
