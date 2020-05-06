@@ -114,7 +114,7 @@ bool ImageFromFile::createImageTimeline( const std::string & _imageDir ){
 
     // frame parameters
     const SOneSecondImages & firstSecond = m_imagesBySeconds.front();
-    std::vector<char> vecForParams( firstSecond.images[ 0 ]->imageBytes.begin(), firstSecond.images[ 0 ]->imageBytes.end() );
+    const std::vector<char> vecForParams( firstSecond.images[ 0 ]->imageBytes.begin(), firstSecond.images[ 0 ]->imageBytes.end() );
 
     const cv::Mat decodedImage = cv::imdecode( vecForParams, 1 );
 
@@ -187,7 +187,6 @@ void ImageFromFile::tick(){
 std::pair<TConstDataPointer, TDataSize> ImageFromFile::getImageData(){
 
     std::pair<TConstDataPointer, TDataSize> out;
-//    m_mutexImageRef.lock();
 
     // 1st version ( independent cycle )
 //    out = m_currentImageRef->imageMetadata;
@@ -198,14 +197,20 @@ std::pair<TConstDataPointer, TDataSize> ImageFromFile::getImageData(){
     out = second.images[ m_currentFrameIdx ]->imageMetadata;
 
     // text overlay
-    if( m_state.settings.statusOverlay ){
-//        cv::imdecode( second.images[ m_currentFrameIdx ]->imageBytes, 1, & m_currentImage );
-//        constexpr int fontScale = 1;
-//        cv::putText( m_currentImage, "ONLINE [FPS 20.0]", cv::Point2f(30, m_state.imageProps.height - 30), cv::FONT_HERSHEY_TRIPLEX, fontScale, cv::Scalar(0, 255, 0, 0) );
-//        m_currentImageBytes.clear();
-//        cv::imencode( ".jpg", m_currentImage, m_currentImageBytes );
-//        out.first = m_currentImageBytes.data();
-//        out.second = m_currentImageBytes.size();
+    if( m_state.settings.statusOverlay ){        
+        const std::vector<char> vecForParams( second.images[ m_currentFrameIdx ]->imageBytes.begin(),
+                second.images[ m_currentFrameIdx ]->imageBytes.end() );
+        cv::imdecode( vecForParams, 1, & m_currentImageMatrix );
+
+        constexpr int fontScale = 1;
+        const long num = ( ::rand() % 500 );
+        const string str = "ONLINE [FPS " + std::to_string(num) + "]";
+        cv::putText( m_currentImageMatrix, str, cv::Point2f(30, m_state.imageProps.height - 30), cv::FONT_HERSHEY_TRIPLEX, fontScale, cv::Scalar(0, 255, 0, 0) );
+
+        m_currentImageBuf.clear();
+        cv::imencode( ".jpg", m_currentImageMatrix, m_currentImageBuf );
+        out.first = m_currentImageBuf.data();
+        out.second = m_currentImageBuf.size();
     }
 
     // move indexes
@@ -215,11 +220,6 @@ std::pair<TConstDataPointer, TDataSize> ImageFromFile::getImageData(){
 
         m_currentSecondIdx = ++m_currentSecondIdx % m_imagesBySeconds.size();
     }
-
-//    m_mutexImageRef.unlock();
-
-
-
 
     return out;
 }

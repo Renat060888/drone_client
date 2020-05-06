@@ -63,8 +63,8 @@ private:
     std::vector<SOneSecondImages> m_imagesBySeconds;
     SState m_state;
 
-    cv::Mat m_currentImage;
-    std::vector<unsigned char> m_currentImageBytes;
+    cv::Mat m_currentImageMatrix;
+    std::vector<unsigned char> m_currentImageBuf;
 
 
     // service
