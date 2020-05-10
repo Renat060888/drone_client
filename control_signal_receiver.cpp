@@ -78,14 +78,15 @@ void ControlSignalReceiver::callbackBoardPositionChanged( double _lat, double _l
 }
 
 void ControlSignalReceiver::callbackBoardOnline( bool _online ){
-
+#ifdef OBJREPR_LIBRARY_EXIST
     objrepr::DynBooleanAttributePtr attr1 = boost::dynamic_pointer_cast<objrepr::DynBooleanAttribute>( m_attrMap->getAttr("online") );
     bool rt = attr1->setValue( _online );
     attr1->pushAsync();
+#endif
 }
 
 void ControlSignalReceiver::callbackCameraPositionChanged( double _pitch, double _roll, double _zoom ){
-
+#ifdef OBJREPR_LIBRARY_EXIST
     objrepr::DynRealAttributePtr attr1 = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr("elevation") );
     bool rt = attr1->setValue( _pitch );
     attr1->pushAsync();
@@ -97,6 +98,7 @@ void ControlSignalReceiver::callbackCameraPositionChanged( double _pitch, double
     objrepr::DynRealAttributePtr attr3 = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr("focal_length") );
     rt = attr3->setValue( _zoom );
     attr3->pushAsync();
+#endif
 }
 
 // objrepr attr callbacks
