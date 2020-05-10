@@ -72,6 +72,7 @@ bool DroneClient::init( const SInitSettings & _settings ){
         if( ! imageProvider->init(settings) ){
             return false;
         }
+        imageProvider->m_signalFirstFrameFromDrone.connect( boost::bind( & DroneClient::firstFrameFronDrone, this ) );
         m_imageProvider = imageProvider;
     }
     else{
@@ -90,8 +91,20 @@ bool DroneClient::init( const SInitSettings & _settings ){
         return false;
     }
 
+    if( "file" == CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE ){
+        if( ! m_videoGenerator.connect() ){
+            return false;
+        }
+    }
+
     VS_LOG_INFO << PRINT_HEADER << " ============================ INIT SUCCESS ============================" << endl;
     return true;
+}
+
+void DroneClient::firstFrameFronDrone(){
+
+    VS_LOG_INFO << PRINT_HEADER << " signal from ImageFromDrone about first frame" << endl;
+    m_videoGenerator.connect();
 }
 
 void DroneClient::launch(){

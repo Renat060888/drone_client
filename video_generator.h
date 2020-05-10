@@ -66,6 +66,7 @@ public:
     bool init( const SInitSettings & _settings );
     const SState & getState() const { return m_state; }
 
+    bool connect();
 
 
 private:
@@ -74,7 +75,6 @@ private:
     static void callbackStopFeed( GstElement * _element, gpointer _data );
     static gboolean callbackGstSourceMessage( GstBus * bus, GstMessage * message, gpointer user_data );
 
-    bool connect( const SInitSettings & _settings );
     void disconnect();
     std::string definePipelineDescription( const SInitSettings & _settings );
 

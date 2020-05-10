@@ -54,7 +54,7 @@ static bool initSingletons( int _argc, char ** _argv, char ** _env ){
 
 int main( int argc, char ** argv, char ** env ){
 
-    QCoreApplication a( argc, argv );
+    QCoreApplication app( argc, argv );
     g_argc = argc;
     g_argv = argv;
 
@@ -72,5 +72,5 @@ int main( int argc, char ** argv, char ** env ){
         return EXIT_FAILURE;
     }
 
-    return a.exec();
+    return app.exec();
 }

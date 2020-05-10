@@ -15,9 +15,9 @@ QMAKE_CXXFLAGS += -Wno-unused-variable
 
 DEFINES += \
     QT_NO_VERSION_TAGGING \
-    SWITCH_LOGGER_SIMPLE \
-#    SWITCH_LOGGER_ASTRA \
-#    OBJREPR_LIBRARY_EXIST \
+#    SWITCH_LOGGER_SIMPLE \
+    SWITCH_LOGGER_ASTRA \
+    OBJREPR_LIBRARY_EXIST \
 
 LIBS += \
     -lboost_regex \
@@ -47,7 +47,7 @@ SOURCES += main.cpp \
     control_signal_receiver.cpp \
     from_ms_common/common/ms_common_types.cpp \
     from_ms_common/system/a_config_reader.cpp \    
-    from_ms_common/system/logger_simple.cpp \
+#    from_ms_common/system/logger_simple.cpp \
     from_ms_common/system/objrepr_bus.cpp \
     from_ms_common/communication/network_interface.cpp \
     from_ms_common/communication/unified_command_convertor.cpp \
@@ -58,7 +58,7 @@ contains( DEFINES, OBJREPR_LIBRARY_EXIST ){
     message("connect astra-logger for 'unilog'")
 SOURCES += \
     from_ms_common/system/logger_astra.cpp \
-    from_ms_common/system/logger_normal.cpp \
+#    from_ms_common/system/logger_normal.cpp \
 }
 
 # The following define makes your compiler emit warnings if you use
@@ -86,7 +86,7 @@ HEADERS += \
     from_ms_common/system/a_config_reader.h \
     from_ms_common/system/logger.h \
     from_ms_common/system/logger_common.h \    
-    from_ms_common/system/logger_simple.h \
+#    from_ms_common/system/logger_simple.h \
     from_ms_common/system/objrepr_bus.h \
     from_ms_common/communication/network_interface.h \
     from_ms_common/communication/unified_command_convertor.h \
@@ -98,6 +98,6 @@ contains( DEFINES, OBJREPR_LIBRARY_EXIST ){
     message("connect astra-logger for 'unilog'")
 HEADERS += \
     from_ms_common/system/logger_astra.h \
-    from_ms_common/system/logger_normal.h \
+#    from_ms_common/system/logger_normal.h \
 }
 

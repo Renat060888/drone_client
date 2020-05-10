@@ -33,6 +33,8 @@ private:
     DroneClient();
     ~DroneClient();
 
+    void firstFrameFronDrone();
+
     // data
 
     // service

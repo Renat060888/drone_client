@@ -35,9 +35,9 @@ bool VideoGenerator::init( const SInitSettings & _settings ){
     m_state.settings = _settings;
     m_dataForTransfer.dataSettings = & m_state.settings;
 
-    if( ! connect(_settings) ){
-        return false;
-    }
+//    if( ! connect() ){
+//        return false;
+//    }
 
 
 
@@ -45,14 +45,16 @@ bool VideoGenerator::init( const SInitSettings & _settings ){
     return true;
 }
 
-bool VideoGenerator::connect( const SInitSettings & _settings ){
+bool VideoGenerator::connect(){
+
+    const SInitSettings & settings = m_state.settings;
 
     if( m_gstPipeline ){
-        VS_LOG_WARN << PRINT_HEADER << " [" << _settings.rtpEmitUdpPort << "] already emit video stream" << endl;
+        VS_LOG_WARN << PRINT_HEADER << " [" << settings.rtpEmitUdpPort << "] already emit video stream" << endl;
         return true;
     }
 
-    const string pipelineDscr = definePipelineDescription( _settings );
+    const string pipelineDscr = definePipelineDescription( settings );
     if( pipelineDscr.empty() ){
         return false;
     }
@@ -195,11 +197,12 @@ gboolean VideoGenerator::callbackGstSourceMessage( GstBus * _bus, GstMessage * _
         gchar * debug;
         gst_message_parse_error( _message, & err, & debug );
 
-        VS_LOG_ERROR << "VideoGenerator received error from GstObject: [" << _bus->object.name
-                  << "] msg: [" << err->message
-                  << "] Debug [" << debug
-                  << "]"
-                  << endl;
+        VS_LOG_ERROR << PRINT_HEADER
+                     << " received error from GstObject: [" << _bus->object.name
+                     << "] msg: [" << err->message
+                     << "] Debug [" << debug
+                     << "]"
+                     << endl;
 
         g_error_free( err );
         g_free( debug );

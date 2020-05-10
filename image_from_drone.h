@@ -3,6 +3,7 @@
 
 #include <mutex>
 
+#include <boost/signals2.hpp>
 #include <opencv2/opencv.hpp>
 #include <nppntt/rfgroundvideoprocessing.h>
 
@@ -25,6 +26,8 @@ public:
     virtual std::pair<TConstDataPointer, TDataSize> getImageData() override;
     virtual SImageProperties getImageProperties() override;
 
+    boost::signals2::signal<void()> m_signalFirstFrameFromDrone;
+
 
 private slots:
     void slotLastFrameChanged( QByteArray & _frame );
@@ -39,6 +42,8 @@ private:
 
     cv::Mat m_currentImage;
     std::vector<unsigned char> m_currentImageBytes;
+    int m_widthViaOpenCV;
+    int m_heightViaOpenCV;
 
     // service
     OwlGroudControl::RFGroundVideoProcessing rfv;

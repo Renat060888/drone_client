@@ -11,7 +11,7 @@
 
 using namespace std;
 
-static constexpr const char * PRINT_HEADER = "FileImageProvider:";
+static constexpr const char * PRINT_HEADER = "ImgFromFile:";
 static int32_t g_fps = 0;
 
 ImageFromFile::ImageFromFile()

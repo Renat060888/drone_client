@@ -4,13 +4,23 @@
 #include <QFile>
 #include <QJsonParseError>
 #include "from_ms_common/system/logger.h"
+#include "from_ms_common/common/ms_common_utils.h"
 
 #include "drone_controller.h"
 
 using namespace std;
 
+static constexpr const char * PRINT_HEADER = "DroneController:";
+
 DroneController::DroneController()
     : m_shutdownCalled(false)
+    , m_azimutAbsDeg(0.0)
+    , m_azimutIncDeg(0.0)
+    , m_elevationAbsDeg(0.0)
+    , m_elevationIncDeg(0.0)
+    , m_lastPingValFromDrone(false)
+    , m_boardOnline(false)
+    , m_lastPingAtMillisec(0)
 {
     QObject::connect( & rfc, SIGNAL(readResponseComplete(OwlDeviceInputData::OwlDeviceDataBase::DataType)),
                      this, SLOT(slotReadResponseComplete(OwlDeviceInputData::OwlDeviceDataBase::DataType))
@@ -33,37 +43,50 @@ DroneController::~DroneController()
 
 bool DroneController::init( const SInitSettings & _settings ){
 
-    m_trCarrierImitation = new std::thread( & DroneController::threadCarrierImitation, this );
+    m_settings = _settings;
 
+    // init
+    if( ! rfc.init() ){
+        VS_LOG_ERROR << PRINT_HEADER << " rfc init failed" << endl;
+        return false;
+    }
+
+    // read config
     QFile rfconfig( _settings.configFilePath.c_str() );
     QJsonParseError jerror;
     QJsonDocument jdoc;
     QJsonObject jobj;
 
-    //
-    if( ! rfc.init() ){
-        return false;
-    }
-
-    //
     if(rfconfig.open(QIODevice::ReadOnly))
         jdoc = QJsonDocument::fromJson( rfconfig.readAll(), &jerror );
+    else{
+		assert( false );
+	}
 
-    if(jerror.error == QJsonParseError::NoError) {
+    if( jerror.error == QJsonParseError::NoError ){
         jobj = jdoc.object();
-
-        rfc.fromJson( jobj["controlClient"].toObject() );
+        rfc.fromJson( jobj );
     }
-
-    //
-    if( ! rfc.startAsync() ){
+    else{
+        VS_LOG_ERROR << PRINT_HEADER
+                     << " rfc json file [" << _settings.configFilePath << "] parsing error, reason: " << jerror.errorString().toStdString()
+                     << endl;
         return false;
     }
 
+    // start
+    if( ! rfc.startAsync() ){
+        VS_LOG_ERROR << PRINT_HEADER << " rfc start async failed" << endl;
+        return false;
+    }
+
+    m_trMaintenance = new std::thread( & DroneController::threadMaintenance, this );
+        
+	VS_LOG_INFO << PRINT_HEADER << " init success, config " << _settings.configFilePath << endl;
     return true;
 }
 
-void DroneController::threadCarrierImitation(){
+void DroneController::threadMaintenance(){
 
     while( ! m_shutdownCalled ){
 
@@ -73,12 +96,13 @@ void DroneController::threadCarrierImitation(){
 
         checkPings();
 
-        std::this_thread::sleep_for( chrono::milliseconds(100) );
+        std::this_thread::sleep_for( chrono::milliseconds(10) );
     }
 }
 
 void DroneController::movingImitation(){
 
+    // board
     static double t = 0;
     t += 1;
 
@@ -90,6 +114,17 @@ void DroneController::movingImitation(){
         observer->callbackBoardPositionChanged( lat, lon, alt );
     }
 
+    // camera
+    static int64_t lastLensChangeAtMillisec = 0;
+
+    if( (common_utils::getCurrentTimeMillisec() - lastLensChangeAtMillisec) > 1000LL ){
+        lastLensChangeAtMillisec = common_utils::getCurrentTimeMillisec();
+
+        for( IDroneStateObserver * observer : m_observers ){
+            observer->callbackCameraPositionChanged( ::rand() % 90, ::rand() % 45, ::rand() % 255 );
+        }
+    }
+
 //    double angleDeg = 0.0f;
 //    const double centerLatDeg = 60.0f;
 //    const double centerLonDeg = 29.0f;
@@ -99,8 +134,35 @@ void DroneController::movingImitation(){
 
 void DroneController::checkPings(){
 
-    static int64_t lastPingMillisec = 0;
+    // detect ping
+    if( m_lastPingValFromDrone ^ rfc.pingIndicator() ){
+        m_lastPingValFromDrone = rfc.pingIndicator();
 
+        m_lastPingAtMillisec = common_utils::getCurrentTimeMillisec();
+    }
+
+    if( m_boardOnline ){
+        // check for offline
+        if( (common_utils::getCurrentTimeMillisec() - m_lastPingAtMillisec) > 10000LL ){
+            VS_LOG_WARN << PRINT_HEADER << " drone goes offline" << endl;
+
+            m_boardOnline = false;
+            for( IDroneStateObserver * observer : m_observers ){
+                observer->callbackBoardOnline( false );
+            }
+        }
+    }
+    else{
+        // check for online
+        if( (common_utils::getCurrentTimeMillisec() - m_lastPingAtMillisec) < 10000LL ){
+            VS_LOG_INFO << PRINT_HEADER << " drone back to online" << endl;
+
+            m_boardOnline = true;
+            for( IDroneStateObserver * observer : m_observers ){
+                observer->callbackBoardOnline( true );
+            }
+        }
+    }
 }
 
 // ----------------------------------------------------------------------
@@ -113,7 +175,7 @@ void DroneController::slotReadResponseComplete( OwlDeviceInputData::OwlDeviceDat
 
 void DroneController::slotCurrentStateChanged( OwlDeviceInputData::State * _currentState ){
 
-
+    // TODO: do ?
 }
 
 void DroneController::slotBoardPosChanged( OwlDeviceInputData::BoardPosition * _boardPos ){
@@ -137,15 +199,11 @@ void DroneController::slotRpzLensChanged( OwlDeviceInputData::RollPitchZoomLens 
 // ----------------------------------------------------------------------
 // GUI signals
 // ----------------------------------------------------------------------
-void DroneController::callbackSetTargetCoord( float lat, float lon, int alt ){
 
-    VS_LOG_INFO << "callbackSetTargetCoord:" << lat << " " << lon << " " << alt << endl;
-    rfc.setTargetCoord( lat, lon, alt );
-}
-
+// mode
 void DroneController::callbackSetMode( EDroneMode _mode ){
 
-    VS_LOG_INFO << "callbackSetMode:" << ((int)_mode) << endl;
+    VS_LOG_INFO << PRINT_HEADER << " callbackSetMode:" << ((int)_mode) << endl;
 
     switch( _mode ){
     case EDroneMode::OBSERVATION : {
@@ -169,96 +227,92 @@ void DroneController::callbackSetMode( EDroneMode _mode ){
         break;
     }
     default : {
-        VS_LOG_ERROR << "unknown drone mode (int): " << ((int)_mode) << endl;
+        VS_LOG_ERROR << PRINT_HEADER << " unknown drone mode (int): " << ((int)_mode) << endl;
     }
     }
 }
 
-void DroneController::callbackSetAzimut( double _azimutDeg ){
-
-    // TODO: 'get' ?
-    VS_LOG_INFO << "callbackSetAzimut:" << _azimutDeg << endl;
-}
-
+// position control
 void DroneController::callbackSetWantAzimut( double _azimutAbsDeg ){
 
-    VS_LOG_INFO << "callbackSetWantAzimut:" << _azimutAbsDeg << endl;
-    rfc.setPositionAngle( _azimutAbsDeg, 0.0f );
-}
+    VS_LOG_INFO << PRINT_HEADER << " callbackSetWantAzimut: " << _azimutAbsDeg << " abs elev: " << m_elevationAbsDeg << endl;
 
-void DroneController::callbackSetAzimutChangeRate( double _azimutIncDeg ){
-
-    VS_LOG_INFO << "callbackSetAzimutChangeRate:" << _azimutIncDeg << endl;
-    rfc.cameraRotation( _azimutIncDeg, 0.0f );
-}
-
-void DroneController::callbackSetElevation( double _elevationDeg ){
-
-    // TODO: 'get' ?
-    VS_LOG_INFO << "callbackSetElevation:" << _elevationDeg << endl;
+    // NOTE: values swapped
+    rfc.setPositionAngle( m_elevationAbsDeg, _azimutAbsDeg );
+    m_azimutAbsDeg = _azimutAbsDeg;
 }
 
 void DroneController::callbackSetWantElevation( double _elevationAbsDeg ){
 
-    VS_LOG_INFO << "callbackSetWantElevation:" << _elevationAbsDeg << endl;
-    rfc.setPositionAngle( 0.0f, _elevationAbsDeg );
+    VS_LOG_INFO << PRINT_HEADER << " callbackSetWantElevation: " << _elevationAbsDeg << " abs azim: " << m_azimutAbsDeg << endl;
+
+    // NOTE: values swapped
+    rfc.setPositionAngle( _elevationAbsDeg, m_azimutAbsDeg );
+    m_elevationAbsDeg = _elevationAbsDeg;
+}
+
+void DroneController::callbackSetAzimutChangeRate( double _azimutIncDeg ){
+
+    VS_LOG_INFO << PRINT_HEADER << " callbackSetAzimutChangeRate: " << _azimutIncDeg << " inc elev: " << m_elevationIncDeg << endl;
+
+    rfc.cameraRotation( _azimutIncDeg, m_elevationIncDeg );
+    m_azimutIncDeg = _azimutIncDeg;
 }
 
 void DroneController::callbackSetElevationChangeRate( double _elevationIncDeg ){
 
-    VS_LOG_INFO << "callbackSetElevationChangeRate:" << _elevationIncDeg << endl;
-    rfc.cameraRotation( 0.0f, _elevationIncDeg );
+    VS_LOG_INFO << PRINT_HEADER << " callbackSetElevationChangeRate: " << _elevationIncDeg << " inc azim: " << m_azimutIncDeg << endl;
+
+    rfc.cameraRotation( m_azimutIncDeg, _elevationIncDeg );
+    m_elevationIncDeg = _elevationIncDeg;
 }
 
-void DroneController::callbackSetFocalLength( double _focalLengthMillimeter ){
-
-    // TODO: ?
-    VS_LOG_INFO << "callbackSetFocalLength:" << _focalLengthMillimeter << endl;
-}
-
+// optic control
 void DroneController::callbackSetFocusChangeRate( double _rate ){
 
-    VS_LOG_INFO << "callbackSetFocusChangeRate:" << _rate << endl;
-
-    static double lastRate = 0.0f;
-
-    if( _rate > lastRate ){
+    if( _rate > 0.0f ){
         rfc.cameraFunctionFocusIn();
+        VS_LOG_INFO << PRINT_HEADER << " callbackSetFocusChangeRate (In):" << _rate << endl;
+    }
+    else if( _rate < 0.0f ){
+        rfc.cameraFunctionFocusOut();
+        VS_LOG_INFO << PRINT_HEADER << " callbackSetFocusChangeRate (Out):" << _rate << endl;
+    }
+    else if( _rate == 0.0f ){
         rfc.cameraFunctionStopFocus();
+        VS_LOG_INFO << PRINT_HEADER << " callbackSetFocusChangeRate (Stop):" << _rate << endl;
     }
     else{
-        rfc.cameraFunctionFocusOut();
-        rfc.cameraFunctionStopFocus();
+        VS_LOG_WARN << PRINT_HEADER << " wtf with focus?" << endl;
     }
-
-    lastRate = _rate;
 }
 
 void DroneController::callbackSetZoomChangeRate( double _rate ){
 
-    VS_LOG_INFO << "callbackSetZoomChangeRate:" << ((int)_rate) << endl;
-
-    static double lastRate = 0.0f;
-
-    if( _rate > lastRate ){
+    if( _rate > 0.0f ){
         rfc.cameraFunctionZoomIn();
+        VS_LOG_INFO << PRINT_HEADER << " callbackSetZoomChangeRate (In):" << _rate << endl;
+    }
+    else if( _rate < 0.0f ){
+        rfc.cameraFunctionZoomOut();
+        VS_LOG_INFO << PRINT_HEADER << " callbackSetZoomChangeRate (Out):" << _rate << endl;
+    }
+    else if( _rate == 0.0f ){
         rfc.cameraFunctionStopZoom();
+        VS_LOG_INFO << PRINT_HEADER << " callbackSetZoomChangeRate (Stop):" << _rate << endl;
     }
     else{
-        rfc.cameraFunctionZoomOut();
-        rfc.cameraFunctionStopZoom();
+        VS_LOG_WARN << PRINT_HEADER << " wtf with zoom?" << endl;
     }
-
-    lastRate = _rate;
 }
 
 void DroneController::callbackSetDiaphragmMode( ECameraDiaphragmMode _mode ){
 
-    VS_LOG_INFO << "callbackSetDiaphragmMode:" << ((int)_mode) << endl;
+    VS_LOG_INFO << PRINT_HEADER << " callbackSetDiaphragmMode:" << ((int)_mode) << endl;
 
     switch( _mode ){
     case ECameraDiaphragmMode::AUTO : {
-        rfc.cameraFunctionDiaphragmOpen( false);
+        rfc.cameraFunctionDiaphragmOpen( false );
         break;
     }
     case ECameraDiaphragmMode::OPEN : {
@@ -266,27 +320,45 @@ void DroneController::callbackSetDiaphragmMode( ECameraDiaphragmMode _mode ){
         break;
     }
     default : {
-        VS_LOG_ERROR << "unknown diaphragm mode (int): " << ((int)_mode) << endl;
+        VS_LOG_ERROR << PRINT_HEADER << " unknown diaphragm mode (int): " << ((int)_mode) << endl;
     }
+    }
+}
+
+// service
+void DroneController::callbackStartVideoStream( bool _start ){
+
+    if( _start ){
+        rfc.startStream();
+    }
+    else{
+        rfc.stopStream();
     }
 }
 
 void DroneController::callbackSetTxRxScale( double _scale ){
 
-    VS_LOG_INFO << "callbackSetTxRxScale:" << _scale << endl;
+    VS_LOG_INFO << PRINT_HEADER << " callbackSetTxRxScale:" << _scale << endl;
     rfc.setTxrxScale( _scale );
 }
 
 void DroneController::callbackSetShowAim( bool _show ){
 
-    VS_LOG_INFO << "callbackSetShowAim:" << _show << endl;
+    VS_LOG_INFO << PRINT_HEADER << " callbackSetShowAim:" << _show << endl;
     rfc.cameraFunctionShowAim( _show );
 }
 
 void DroneController::callbackSetShowTelemetry( bool _show ){
 
-    VS_LOG_INFO << "callbackSetShowTelemetry:" << _show << endl;
+    VS_LOG_INFO << PRINT_HEADER << " callbackSetShowTelemetry:" << _show << endl;
     rfc.cameraFunctionShowTelemetry( _show );
+}
+
+// ... ?
+void DroneController::callbackSetTargetCoord( float lat, float lon, int alt ){
+
+    VS_LOG_INFO << PRINT_HEADER << " callbackSetTargetCoord:" << lat << " " << lon << " " << alt << endl;
+    rfc.setTargetCoord( lat, lon, alt );
 }
 
 void DroneController::addObserver( IDroneStateObserver * _observer ){

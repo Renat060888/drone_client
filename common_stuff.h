@@ -25,6 +25,7 @@ public:
 
     virtual void callbackBoardPositionChanged( double _lat, double _lon, double _alt ) = 0;
     virtual void callbackCameraPositionChanged( double _pitch, double _roll, double _zoom ) = 0;
+    virtual void callbackBoardOnline( bool _online ) = 0;
 
 
 };
@@ -54,15 +55,12 @@ public:
     virtual void callbackSetMode( EDroneMode _mode ) = 0;
 
     // position control
-    virtual void callbackSetAzimut( double _azimutDeg ) = 0;
     virtual void callbackSetWantAzimut( double _azimutAbsDeg ) = 0;
     virtual void callbackSetAzimutChangeRate( double _azimutIncDeg ) = 0;
-    virtual void callbackSetElevation( double _elevationDeg ) = 0;
     virtual void callbackSetWantElevation( double _elevationAbsDeg ) = 0;
     virtual void callbackSetElevationChangeRate( double _elevationIncDeg ) = 0;
 
     // optic control
-    virtual void callbackSetFocalLength( double _focalLengthMillimeter ) = 0;
     virtual void callbackSetFocusChangeRate( double _rate ) = 0;
     virtual void callbackSetZoomChangeRate( double _rate ) = 0;
     virtual void callbackSetDiaphragmMode( ECameraDiaphragmMode _mode ) = 0;
@@ -71,6 +69,7 @@ public:
     virtual void callbackSetTxRxScale( double _scale ) = 0;
     virtual void callbackSetShowAim( bool _show ) = 0;
     virtual void callbackSetShowTelemetry( bool _show ) = 0;
+    virtual void callbackStartVideoStream( bool _start ) = 0;
 };
 
 

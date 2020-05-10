@@ -6,6 +6,8 @@
 
 using namespace std;
 
+static constexpr const char * PRINT_HEADER = "ObjreprSignalReceiver:";
+
 static IControlSignalsObserver::EDroneMode convertDroneModeFromStr( const string & _str ){
 
     if( "observation" == _str ){ return IControlSignalsObserver::EDroneMode::OBSERVATION; }
@@ -33,7 +35,7 @@ bool ControlSignalReceiver::init( const SInitSettings & _settings ){
     // bind to carrier
     objrepr::SpatialObjectPtr carrierObject = objrepr::RepresentationServer::instance()->objectManager()->getObject( _settings.carrierObjectId );
     if( ! carrierObject ){
-        VS_LOG_ERROR << "carrier object with id " << _settings.carrierObjectId << " is not found" << endl;
+        VS_LOG_ERROR << PRINT_HEADER << " carrier object with id " << _settings.carrierObjectId << " is not found" << endl;
         return false;
     }
     m_carrierObject = carrierObject;
@@ -41,9 +43,10 @@ bool ControlSignalReceiver::init( const SInitSettings & _settings ){
     // bind to camera
     objrepr::SpatialObjectPtr cameraObject = objrepr::RepresentationServer::instance()->objectManager()->getObject( _settings.cameraObjectId );
     if( ! cameraObject ){
-        VS_LOG_ERROR << "camera object with id " << _settings.cameraObjectId << " is not found" << endl;
+        VS_LOG_ERROR << PRINT_HEADER << " camera object with id " << _settings.cameraObjectId << " is not found" << endl;
         return false;
     }
+    m_cameraObject = cameraObject;
 
     // listen attrs changing
     objrepr::DynamicAttributeMapPtr attrMap = cameraObject->dynamicAttrMap();
@@ -68,37 +71,53 @@ void ControlSignalReceiver::callbackBoardPositionChanged( double _lat, double _l
 
     m_carrierObject->setTemporalState( objrepr::SpatialObject::TemporalState::TS_Active );
     if( ! m_carrierObject->changePoint( 0, 0, coords ) ){
-        cout << "WARNING: failed to change point of objrepr-object: " << m_carrierObject->name() << endl;
+        VS_LOG_WARN << PRINT_HEADER << " failed to change point of objrepr-object: " << m_carrierObject->name() << endl;
     }
     m_carrierObject->push();
 #endif
-//    cout << "carrier moving: " << _lat << endl;
+}
+
+void ControlSignalReceiver::callbackBoardOnline( bool _online ){
+
+    objrepr::DynBooleanAttributePtr attr1 = boost::dynamic_pointer_cast<objrepr::DynBooleanAttribute>( m_attrMap->getAttr("online") );
+    bool rt = attr1->setValue( _online );
+    attr1->pushAsync();
 }
 
 void ControlSignalReceiver::callbackCameraPositionChanged( double _pitch, double _roll, double _zoom ){
 
-    // TODO: do
+    objrepr::DynRealAttributePtr attr1 = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr("elevation") );
+    bool rt = attr1->setValue( _pitch );
+    attr1->pushAsync();
+
+    objrepr::DynRealAttributePtr attr2 = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr("azimut") );
+    rt = attr2->setValue( _roll );
+    attr2->pushAsync();
+
+    objrepr::DynRealAttributePtr attr3 = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr("focal_length") );
+    rt = attr3->setValue( _zoom );
+    attr3->pushAsync();
 }
 
 // objrepr attr callbacks
 void ControlSignalReceiver::callbackAttrUpdated( const std::string & _attrName ){
 
-    VS_LOG_INFO << "attr updated: " << _attrName << endl;
+    VS_LOG_INFO << PRINT_HEADER << " attr updated: " << _attrName << endl;
 }
 
 void ControlSignalReceiver::callbackRequestCompleted( int32_t _id ){
 
-    VS_LOG_INFO << "callbackRequestCompleted" << endl;
+    VS_LOG_INFO << PRINT_HEADER << " callbackRequestCompleted" << endl;
 }
 
 void ControlSignalReceiver::callbackRequestFailed( int32_t _id ){
 
-    VS_LOG_INFO << "callbackRequestFailed" << endl;
+    VS_LOG_INFO << PRINT_HEADER << " callbackRequestFailed" << endl;
 }
 
-void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
+void ControlSignalReceiver::callbackApprovePending( const std::string _attrName ){
 
-    VS_LOG_INFO << "callbackApprovePending: " << _attrName << endl;
+    VS_LOG_INFO << PRINT_HEADER << " callbackApprovePending: " << _attrName << endl;
 
 #ifdef OBJREPR_LIBRARY_EXIST
     // ------------------------------------------------------------
@@ -106,11 +125,9 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
     // ------------------------------------------------------------
     if( "mode" == _attrName ){
         objrepr::DynEnumAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynEnumAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
+        attr->approve();
         const string modeStr = attr->value();
         const IControlSignalsObserver::EDroneMode mode = convertDroneModeFromStr( modeStr );
-
-        attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetMode( mode );
@@ -119,23 +136,10 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
     // ------------------------------------------------------------
     // position control
     // ------------------------------------------------------------
-    else if( "azimut" == _attrName ){
-        objrepr::DynRealAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const double azimut = attr->value();
-
-        attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
-
-        for( IControlSignalsObserver * observer : m_observers ){
-            observer->callbackSetAzimut( azimut );
-        }
-    }
     else if( "want_azimut" == _attrName ){
         objrepr::DynRealAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const int64_t azimutAbs = attr->value();
-
         attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+        const int64_t azimutAbs = attr->value();
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetWantAzimut( azimutAbs );
@@ -143,32 +147,17 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
     }
     else if( "azimut_change_rate" == _attrName ){
         objrepr::DynRealAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const double azimutInc = attr->value();
-
         attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+        const double azimutInc = attr->value();
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetAzimutChangeRate( azimutInc );
         }
     }
-    else if( "elevation" == _attrName ){
-        objrepr::DynRealAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const double elevation = attr->value();
-
-        attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
-
-        for( IControlSignalsObserver * observer : m_observers ){
-            observer->callbackSetElevation( elevation );
-        }
-    }
     else if( "want_elevation" == _attrName ){
         objrepr::DynRealAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const double elevationAbs = attr->value();
-
         attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+        const double elevationAbs = attr->value();
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetWantElevation( elevationAbs );
@@ -176,10 +165,8 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
     }
     else if( "elevation_change_rate" == _attrName ){
         objrepr::DynRealAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const double elevationInc = attr->value();
-
         attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+        const double elevationInc = attr->value();
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetElevationChangeRate( elevationInc );
@@ -188,23 +175,10 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
     // ------------------------------------------------------------
     // optic control
     // ------------------------------------------------------------
-    else if( "focal_length" == _attrName ){
-        objrepr::DynRealAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const double lengthMillimeter = attr->value();
-
-        attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
-
-        for( IControlSignalsObserver * observer : m_observers ){
-            observer->callbackSetFocalLength( lengthMillimeter );
-        }
-    }
     else if( "focus_change_rate" == _attrName ){
         objrepr::DynRealAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const double rate = attr->value();
-
         attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+        const double rate = attr->value();
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetFocusChangeRate( rate );
@@ -212,10 +186,8 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
     }
     else if( "zoom_change_rate" == _attrName ){
         objrepr::DynRealAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const double rate = attr->value();
-
         attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+        const double rate = attr->value();
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetZoomChangeRate( rate );
@@ -223,11 +195,9 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
     }
     else if( "diaphragm_mode" == _attrName ){
         objrepr::DynEnumAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynEnumAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
+        attr->approve();
         const string modeStr = attr->value();
         const IControlSignalsObserver::ECameraDiaphragmMode mode = convertDiaphragmModeFromStr( modeStr );
-
-        attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetDiaphragmMode( mode );
@@ -236,12 +206,19 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
     // ------------------------------------------------------------
     // service
     // ------------------------------------------------------------
+    else if( "start_video_stream" == _attrName ){
+        objrepr::DynBooleanAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynBooleanAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
+        attr->approve();
+        const bool start = attr->value();
+
+        for( IControlSignalsObserver * observer : m_observers ){
+            observer->callbackStartVideoStream( start );
+        }
+    }
     else if( "trx_scale" == _attrName ){
         objrepr::DynRealAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynRealAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const double scale = attr->value();
-
         attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+        const double scale = attr->value();
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetTxRxScale( scale );
@@ -249,10 +226,8 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
     }
     else if( "show_aim" == _attrName ){
         objrepr::DynBooleanAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynBooleanAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const bool show = attr->value();
-
         attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+        const bool show = attr->value();
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetShowAim( show );
@@ -260,28 +235,25 @@ void ControlSignalReceiver::callbackApprovePending( std::string _attrName ){
     }
     else if( "show_telemetry" == _attrName ){
         objrepr::DynBooleanAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynBooleanAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const bool show = attr->value();
-
         attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+        const bool show = attr->value();
 
         for( IControlSignalsObserver * observer : m_observers ){
             observer->callbackSetShowTelemetry( show );
         }
     }
     else if( "active_hold_point" == _attrName ){
-        objrepr::DynBooleanAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynBooleanAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
-        const bool ahp = attr->value();
-
+        objrepr::DynIntegerAttributePtr attr = boost::dynamic_pointer_cast<objrepr::DynIntegerAttribute>( m_attrMap->getAttr(_attrName.c_str()) );
         attr->approve();
-        VS_LOG_INFO << "val: " << attr->desiredValue() << endl;
+        const uint64_t HoldPointObjectId = attr->value();
 
         for( IControlSignalsObserver * observer : m_observers ){
-            observer->callback( ahp );
+
+            // TODO: do
         }
     }
     else{
-        // TODO: catch error
+        VS_LOG_WARN << PRINT_HEADER << " unknown attr name [" << _attrName << "]" << endl;
     }
 #endif
 }

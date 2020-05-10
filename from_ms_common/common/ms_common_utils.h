@@ -317,6 +317,21 @@ inline bool isDirectory( const std::string & _fsEntity ){
     return false;
 }
 
+inline bool isFile( const std::string & _fsEntity ){
+    namespace fs = boost::filesystem;
+
+    try{
+        fs::path path( _fsEntity );
+        if( fs::exists(path) && fs::is_regular_file(path) ){
+            return true;
+        }
+    }
+    catch( fs::filesystem_error & _ex ){
+        PRELOG_ERR << _ex.what() << std::endl;
+    }
+    return false;
+}
+
 // --------------------------------------------------------------
 // time
 // --------------------------------------------------------------

@@ -68,6 +68,11 @@ bool ConfigReader::parse( const std::string & _content ){
         return false;
     }
 
+    if( ! common_utils::isFile(m_parameters.DRONE_CONTROL_LIB_CONFIG_PATH) ){
+        PRELOG_ERR << ::PRINT_HEADER << " incorrect 'lib config' path" << endl;
+        return false;
+    }
+
     if( ! isIpAddress(m_parameters.VIDEO_STREAMING_UNICAST_DEST_IP) ){
         PRELOG_ERR << ::PRINT_HEADER << " incorrect 'unicast dest ip' address" << endl;
         return false;
