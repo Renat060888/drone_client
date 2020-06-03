@@ -15,9 +15,9 @@ QMAKE_CXXFLAGS += -Wno-unused-variable
 
 DEFINES += \
     QT_NO_VERSION_TAGGING \
-    SWITCH_LOGGER_SIMPLE \
-#    SWITCH_LOGGER_ASTRA \
-#    OBJREPR_LIBRARY_EXIST \
+#    SWITCH_LOGGER_SIMPLE \
+    SWITCH_LOGGER_ASTRA \
+    OBJREPR_LIBRARY_EXIST \
 
 LIBS += \
     -lboost_regex \
@@ -47,12 +47,14 @@ SOURCES += main.cpp \
     control_signal_receiver.cpp \
     from_ms_common/common/ms_common_types.cpp \
     from_ms_common/system/a_config_reader.cpp \    
-    from_ms_common/system/logger_simple.cpp \
+#    from_ms_common/system/logger_simple.cpp \
     from_ms_common/system/objrepr_bus.cpp \
     from_ms_common/communication/network_interface.cpp \
     from_ms_common/communication/unified_command_convertor.cpp \
     objrepr_bus_drone.cpp \
-    config_reader.cpp
+    config_reader.cpp \
+    drone_imitator.cpp \
+    video_convertor.cpp
 
 contains( DEFINES, OBJREPR_LIBRARY_EXIST ){
     message("connect astra-logger for 'unilog'")
@@ -86,13 +88,15 @@ HEADERS += \
     from_ms_common/system/a_config_reader.h \
     from_ms_common/system/logger.h \
     from_ms_common/system/logger_common.h \    
-    from_ms_common/system/logger_simple.h \
+#    from_ms_common/system/logger_simple.h \
     from_ms_common/system/objrepr_bus.h \
     from_ms_common/communication/network_interface.h \
     from_ms_common/communication/unified_command_convertor.h \
     objrepr_bus_drone.h \
     config_reader.h \
-    from_ms_common/common/ms_common_vars.h
+    from_ms_common/common/ms_common_vars.h \
+    drone_imitator.h \
+    video_convertor.h
 
 contains( DEFINES, OBJREPR_LIBRARY_EXIST ){
     message("connect astra-logger for 'unilog'")

@@ -17,8 +17,6 @@ extern char ** g_argv;
 
 DroneClient::DroneClient()
 {
-    setenv( "GST_DEBUG", "", 0 );
-    setenv( "G_MESSAGES_DEBUG", "", 0 );
     gst_init( & g_argc, & g_argv );
 }
 
@@ -38,13 +36,14 @@ bool DroneClient::init( const SInitSettings & _settings ){
     if( ! m_controlSignalReceiver.init(sigRecSettings) ){
         return false;
     }
-    m_controlSignalReceiver.addObserver( & m_droneController );
+    m_controlSignalReceiver.addObserver( (IControlSignalsObserver *)(& m_droneController) );
+    m_controlSignalReceiver.addObserver( (ISystemObserver *)(& m_droneController) );
 
     //
     DroneController::SInitSettings dcSettings;
     dcSettings.configFilePath = CONFIG_PARAMS.DRONE_CONTROL_LIB_CONFIG_PATH;
     dcSettings.pingTimeoutMillisec = CONFIG_PARAMS.DRONE_CONTROL_PING_TIMEOUT_MILLISEC;
-    dcSettings.movingImitationEnable = CONFIG_PARAMS.DRONE_CONTROL_MOVING_IMITATION;
+    dcSettings.imitationEnable = CONFIG_PARAMS.DRONE_CONTROL_IMITATION_ENABLE;
     if( ! m_droneController.init(dcSettings) ){
         return false;
     }
@@ -53,7 +52,7 @@ bool DroneClient::init( const SInitSettings & _settings ){
     // ----------------------------------------------------------------------
     // video sub-system
     // ----------------------------------------------------------------------
-    if( "file" == CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE ){
+    if( "image-file" == CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE ){
         ImageFromFile * imageProvider = new ImageFromFile();
         ImageFromFile::SInitSettings settings;
         settings.imageDir = CONFIG_PARAMS.VIDEO_STREAMING_IMAGES_DIR_PATH;
@@ -72,8 +71,13 @@ bool DroneClient::init( const SInitSettings & _settings ){
         if( ! imageProvider->init(settings) ){
             return false;
         }
+
         imageProvider->m_signalFirstFrameFromDrone.connect( boost::bind( & DroneClient::firstFrameFronDrone, this ) );
+        m_controlSignalReceiver.addObserver( imageProvider );
         m_imageProvider = imageProvider;
+    }
+    else if( "video-file" == CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE ){
+        // dummy
     }
     else{
         VS_LOG_ERROR << PRINT_HEADER << " incorrect video source type [" << CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE << "]" << endl;
@@ -81,18 +85,41 @@ bool DroneClient::init( const SInitSettings & _settings ){
     }
 
     //
-    VideoGenerator::SInitSettings settings2;
-    settings2.imageFormat = VideoGenerator::EImageFormat::JPEG;
-    settings2.enableMulticast = CONFIG_PARAMS.VIDEO_STREAMING_ENABLE_MULTICAST;
-    settings2.rtpEmitIp = ( CONFIG_PARAMS.VIDEO_STREAMING_ENABLE_MULTICAST ? CONFIG_PARAMS.VIDEO_STREAMING_MULTICAST_GROUP_IP : CONFIG_PARAMS.VIDEO_STREAMING_UNICAST_DEST_IP );
-    settings2.rtpEmitUdpPort = CONFIG_PARAMS.VIDEO_STREAMING_DEST_PORT;
-    settings2.imageProvider = m_imageProvider;
-    if( ! m_videoGenerator.init(settings2) ){
+    if( "image-file" == CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE || "drone" == CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE ){
+        VideoGenerator::SInitSettings settings2;
+        settings2.imageFormat = VideoGenerator::EImageFormat::JPEG;
+        settings2.enableMulticast = CONFIG_PARAMS.VIDEO_STREAMING_ENABLE_MULTICAST;
+        settings2.rtpEmitIp = ( CONFIG_PARAMS.VIDEO_STREAMING_ENABLE_MULTICAST ? CONFIG_PARAMS.VIDEO_STREAMING_MULTICAST_GROUP_IP : CONFIG_PARAMS.VIDEO_STREAMING_UNICAST_DEST_IP );
+        settings2.rtpEmitUdpPort = CONFIG_PARAMS.VIDEO_STREAMING_DEST_PORT;
+        settings2.imageProvider = m_imageProvider;
+        if( ! m_videoGenerator.init(settings2) ){
+            return false;
+        }
+    }
+    else if( "video-file" == CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE ){
+        VideoConvertor::SInitSettings settings2;
+        settings2.enableMulticast = CONFIG_PARAMS.VIDEO_STREAMING_ENABLE_MULTICAST;
+        settings2.rtpEmitIp = ( CONFIG_PARAMS.VIDEO_STREAMING_ENABLE_MULTICAST ? CONFIG_PARAMS.VIDEO_STREAMING_MULTICAST_GROUP_IP : CONFIG_PARAMS.VIDEO_STREAMING_UNICAST_DEST_IP );
+        settings2.rtpEmitUdpPort = CONFIG_PARAMS.VIDEO_STREAMING_DEST_PORT;
+        settings2.fileFullPath = CONFIG_PARAMS.VIDEO_STREAMING_VIDEO_FILE_PATH;
+        if( ! m_videoConvertor.init(settings2) ){
+            return false;
+        }
+        m_videoConvertor.addObserver( & m_controlSignalReceiver );
+    }
+    else{
+        VS_LOG_ERROR << PRINT_HEADER << " incorrect video source type [" << CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE << "]" << endl;
         return false;
     }
 
-    if( "file" == CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE ){
-        if( ! m_videoGenerator.connect() ){
+    // start stream if source already available
+    if( "image-file" == CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE ){
+        if( ! m_videoGenerator.connectToSource() ){
+            return false;
+        }
+    }
+    else if( "video-file" == CONFIG_PARAMS.VIDEO_STREAMING_SRC_TYPE ){
+        if( ! m_videoConvertor.connectToSource() ){
             return false;
         }
     }
@@ -104,7 +131,7 @@ bool DroneClient::init( const SInitSettings & _settings ){
 void DroneClient::firstFrameFronDrone(){
 
     VS_LOG_INFO << PRINT_HEADER << " signal from ImageFromDrone about first frame" << endl;
-    m_videoGenerator.connect();
+    m_videoGenerator.connectToSource();
 }
 
 void DroneClient::launch(){

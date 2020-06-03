@@ -2,6 +2,8 @@
 #define IMAGE_FROM_DRONE_H
 
 #include <mutex>
+#include <thread>
+#include <queue>
 
 #include <boost/signals2.hpp>
 #include <opencv2/opencv.hpp>
@@ -9,13 +11,23 @@
 
 #include "common_stuff.h"
 
-class ImageFromDrone : public QObject, public IImageProvider
+class ImageFromDrone : public QObject, public IImageProvider, public ISystemObserver
 {
 Q_OBJECT
 public:
+    struct SDumpData {
+        QByteArray frameBytes;
+        QString telemetryStr;
+    };
+
     struct SInitSettings {
+        SInitSettings()
+            : statusOverlay(false)
+            , dumpIncomingData(false)
+        {}
         std::string configFilePath;
         bool statusOverlay;
+        bool dumpIncomingData;
     };
 
     ImageFromDrone();
@@ -34,6 +46,9 @@ private slots:
 
 
 private:
+    virtual void callbackSwitchOn( bool _on ) override;
+
+    void threadFrameAndTelemetryDump();
 
     // data
     QByteArray m_droneCurrentFrame;
@@ -44,12 +59,16 @@ private:
     std::vector<unsigned char> m_currentImageBytes;
     int m_widthViaOpenCV;
     int m_heightViaOpenCV;
+    bool m_shutdownCalled;
+
+    std::queue<SDumpData> m_dumpQueue;
 
     // service
     OwlGroudControl::RFGroundVideoProcessing rfv;
-    std::mutex m_mutexImageRef;
+    std::mutex m_muCurrentFrame;
     std::mutex m_mutexImageDescrRef;
-
+    std::thread * m_trFrameAndTelemetryDump;
+    std::mutex m_muDumpQueue;
 };
 
 #endif // IMAGE_FROM_DRONE_H

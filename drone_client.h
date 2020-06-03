@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "video_generator.h"
+#include "video_convertor.h"
 #include "drone_controller.h"
 #include "control_signal_receiver.h"
 
@@ -39,6 +40,7 @@ private:
 
     // service
     VideoGenerator m_videoGenerator;
+    VideoConvertor m_videoConvertor;
     IImageProvider * m_imageProvider;
     ControlSignalReceiver m_controlSignalReceiver;
     DroneController m_droneController;

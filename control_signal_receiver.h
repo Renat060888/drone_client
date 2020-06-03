@@ -26,6 +26,7 @@ public:
 
     bool init( const SInitSettings & _settings );
     void addObserver( IControlSignalsObserver * _observer );
+    void addObserver( ISystemObserver * _observer );
 
 
 
@@ -35,21 +36,26 @@ private:
     void callbackApprovePending( const std::string _attrName );
     void callbackRequestCompleted( int32_t _id );
     void callbackRequestFailed( int32_t _id );
+    void callbackObjectUpdated( uint64_t _id );
 
     // signals from drone controller
     virtual void callbackBoardPositionChanged( double _lat, double _lon, double _alt ) override;
-    virtual void callbackCameraPositionChanged( double _pitch, double _roll, double _zoom ) override;
+    virtual void callbackCameraPositionChanged( double _pitch, double _roll, double _yaw, double _zoom ) override;
+    virtual void callbackCameraFOVChanged( double _angle ) override;
     virtual void callbackBoardOnline( bool _online ) override;
 
 
 
     // data
     std::vector<IControlSignalsObserver *> m_observers;
+    std::vector<ISystemObserver *> m_observersSystem;
     SState m_state;
 #ifdef OBJREPR_LIBRARY_EXIST
     objrepr::SpatialObjectPtr m_carrierObject;
     objrepr::SpatialObjectPtr m_cameraObject;
     objrepr::DynamicAttributeMapPtr m_attrMap;
+    objrepr::SpatialObjectPtr m_holdPointObject;
+    uint64_t m_holdPointObjectId;
 #endif
 
     // service

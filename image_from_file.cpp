@@ -226,6 +226,7 @@ std::pair<TConstDataPointer, TDataSize> ImageFromFile::getImageData(){
 
 SImageProperties ImageFromFile::getImageProperties(){
 
+    m_state.imageProps.timestampMillisec = common_utils::getCurrentTimeMillisec();
     return m_state.imageProps;
 }
 

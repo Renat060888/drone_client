@@ -4,6 +4,7 @@
 #include <QJsonParseError>
 #include "from_ms_common/system/logger.h"
 
+#include "common_utils.h"
 #include "image_from_drone.h"
 
 using namespace std;
@@ -12,6 +13,8 @@ static constexpr const char * PRINT_HEADER = "ImgFromDrone:";
 
 ImageFromDrone::ImageFromDrone()
     : m_frameDescr(nullptr)
+    , m_trFrameAndTelemetryDump(nullptr)
+    , m_shutdownCalled(false)
 {
     QObject::connect( & rfv, SIGNAL(lastFrameChanged(QByteArray &)),
                      this, SLOT(slotLastFrameChanged(QByteArray &))
@@ -20,7 +23,7 @@ ImageFromDrone::ImageFromDrone()
 
 ImageFromDrone::~ImageFromDrone(){
 
-
+    common_utils::threadShutdown( m_trFrameAndTelemetryDump );
 }
 
 bool ImageFromDrone::init( const SInitSettings & _settings ){
@@ -60,19 +63,63 @@ bool ImageFromDrone::init( const SInitSettings & _settings ){
     
     rfv.setCalcFps( true );
 
+    if( m_settings.dumpIncomingData ){
+        m_trFrameAndTelemetryDump = new std::thread( & ImageFromDrone::threadFrameAndTelemetryDump, this );
+    }
+
 	VS_LOG_INFO << PRINT_HEADER << " init success, config " << _settings.configFilePath << endl;
     return true;
 }
 
+void ImageFromDrone::callbackSwitchOn( bool _on ){
+
+    // TODO: do
+}
+
+void ImageFromDrone::threadFrameAndTelemetryDump(){
+
+    while( ! m_shutdownCalled ){
+        m_muDumpQueue.lock();
+
+        while( ! m_dumpQueue.empty() ){
+            SDumpData & toDump = m_dumpQueue.front();
+
+            const int64_t timeMillisec = common_utils::getCurrentTimeMillisec();
+
+            const string pathToSave1 = common_utils::timeMillisecToStr( timeMillisec ) + ".bin";
+            QFile file( pathToSave1.c_str() );
+            file.open( QIODevice::WriteOnly );
+            file.write( toDump.frameBytes );
+            file.close();
+
+            const string pathToSave2 = common_utils::timeMillisecToStr( timeMillisec ) + ".json";
+            QFile file2( pathToSave2.c_str() );
+            file2.open( QIODevice::WriteOnly );
+            file2.write( toDump.telemetryStr.toUtf8() );
+            file2.close();
+
+            m_dumpQueue.pop();
+        }
+
+        m_muDumpQueue.unlock();
+        std::this_thread::sleep_for( chrono::milliseconds(100) );
+    }
+}
+
 void ImageFromDrone::slotLastFrameChanged( QByteArray & _frame ){
-
-	VS_LOG_INFO << PRINT_HEADER << " frame, current fps: " << rfv.fps() << endl;
 	
-	
-
-    m_mutexImageRef.lock();
+    m_muCurrentFrame.lock();
     m_droneCurrentFrame = _frame;
-    m_mutexImageRef.unlock();
+    m_muCurrentFrame.unlock();
+
+    if( m_settings.dumpIncomingData ){
+        SDumpData toDump;
+        toDump.frameBytes = _frame;
+        toDump.telemetryStr = "";
+        m_muDumpQueue.lock();
+        m_dumpQueue.push( std::move(toDump) );
+        m_muDumpQueue.unlock();
+    }
 
 	if( m_droneCurrentFrame.isEmpty() ){
 		return;
@@ -84,29 +131,21 @@ void ImageFromDrone::slotLastFrameChanged( QByteArray & _frame ){
         ( * m_frameDescr ) = rfv.parseFrameDescriptor( _frame );
         m_mutexImageDescrRef.unlock();
         
-        
-        VS_LOG_INFO << PRINT_HEADER << "try decode" << endl;
         const std::vector<char> vecForParams( m_droneCurrentFrame.begin(), m_droneCurrentFrame.end() );
-        VS_LOG_INFO << PRINT_HEADER << "vector size: " << vecForParams.size() << endl;
 		const cv::Mat decodedImage = cv::imdecode( vecForParams, 1 );
-		VS_LOG_INFO << PRINT_HEADER << "decode success" << endl;
 
 		m_widthViaOpenCV = decodedImage.cols;
 		m_heightViaOpenCV = decodedImage.rows;
         
-        VS_LOG_INFO << PRINT_HEADER << " first frame w" << m_frameDescr->frameWidth() << endl;
-        VS_LOG_INFO << PRINT_HEADER << " first frame h" << m_frameDescr->frameHeight() << endl;
-        
         m_signalFirstFrameFromDrone();
-    }
-    
+    }    
 }
 
 std::pair<TConstDataPointer, TDataSize> ImageFromDrone::getImageData(){
 
     std::pair<TConstDataPointer, TDataSize> out;
 
-    m_mutexImageRef.lock();
+    m_muCurrentFrame.lock();
     out.first = m_droneCurrentFrame.data();
     out.second = m_droneCurrentFrame.size();
 
@@ -121,7 +160,7 @@ std::pair<TConstDataPointer, TDataSize> ImageFromDrone::getImageData(){
 //        out.second = m_currentImageBytes.size();
     }
 
-    m_mutexImageRef.unlock();
+    m_muCurrentFrame.unlock();
 
     return out;
 }

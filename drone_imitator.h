@@ -1,27 +1,17 @@
-#ifndef DRONE_CONTROLLER_H
-#define DRONE_CONTROLLER_H
+#ifndef DRONE_IMITATOR_H
+#define DRONE_IMITATOR_H
 
 #include <thread>
 
-#include <nppntt/rfgroundcontrolprocessing.h>
-
 #include "common_stuff.h"
 
-class DroneController : public QObject, public IControlSignalsObserver, public ISystemObserver
+class DroneImitator : public IControlSignalsObserver, public ISystemObserver
 {
-Q_OBJECT
 public:
-    struct SInitSettings {
-        std::string configFilePath;
-        int64_t pingTimeoutMillisec;
-        bool imitationEnable;
-    };
+    DroneImitator();
 
-    DroneController();
-    ~DroneController();
 
-    bool init( const SInitSettings & _settings );
-    void addObserver( IDroneStateObserver * _observer );
+
 
 
 private:
@@ -48,22 +38,10 @@ private:
 
     virtual void callbackSwitchOn( bool _on ) override;
 
-    void droneActivityImitation();
-    void checkPings();
+
+
 
     // data
-    std::vector<IDroneStateObserver *> m_observers;
-    bool m_shutdownCalled;
-    SInitSettings m_settings;
-    double m_azimutAbsDeg;
-    double m_azimutIncDeg;
-    double m_elevationAbsDeg;
-    double m_elevationIncDeg;
-    bool m_lastPingValFromDrone;
-    bool m_boardOnline;
-    int64_t m_lastPingAtMillisec;
-
-    // imitation data
     double m_imitatedCameraPitch;
     double m_imitatedCameraRoll;
     double m_requestedCameraPitch;
@@ -71,17 +49,11 @@ private:
     int m_imitateCameraZoom;
     int m_requestedCameraZoom;
 
+
     // service
-    OwlGroudControl::RFGroundControlProcessing rfc;
     std::thread * m_trMaintenance;
 
 
-private slots:
-    void slotReadResponseComplete( OwlDeviceInputData::OwlDeviceDataBase::DataType _cmd );
-
-    void slotCurrentStateChanged( OwlDeviceInputData::State * _currentState );
-    void slotBoardPosChanged( OwlDeviceInputData::BoardPosition * _boardPos );
-    void slotRpzLensChanged( OwlDeviceInputData::RollPitchZoomLens * _rpzLens );
 };
 
-#endif // DRONE_CONTROLLER_H
+#endif // DRONE_IMITATOR_H

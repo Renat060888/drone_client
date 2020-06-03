@@ -9,6 +9,7 @@ using TDataSize = int32_t;
 struct SImageProperties {
     int32_t width;
     int32_t height;
+    int64_t timestampMillisec;
 };
 
 class IImageProvider {
@@ -19,12 +20,21 @@ public:
     virtual SImageProperties getImageProperties() = 0;
 };
 
+class ISystemObserver {
+public:
+    virtual ~ISystemObserver(){}
+
+    virtual void callbackSwitchOn( bool _on ) = 0;
+
+};
+
 class IDroneStateObserver {
 public:
     virtual ~IDroneStateObserver(){}
 
     virtual void callbackBoardPositionChanged( double _lat, double _lon, double _alt ) = 0;
-    virtual void callbackCameraPositionChanged( double _pitch, double _roll, double _zoom ) = 0;
+    virtual void callbackCameraPositionChanged( double _pitch, double _roll, double _yaw, double _zoom ) = 0;
+    virtual void callbackCameraFOVChanged( double _angle ) = 0;
     virtual void callbackBoardOnline( bool _online ) = 0;
 
 
@@ -35,6 +45,7 @@ public:
     enum class EDroneMode {
         OBSERVATION,
         HOLD,
+        HOLD_TO_AIM,
         PILOT_WINDOW,
         STOW,
         POSITION,

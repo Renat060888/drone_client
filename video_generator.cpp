@@ -23,7 +23,7 @@ VideoGenerator::VideoGenerator()
 
 VideoGenerator::~VideoGenerator()
 {
-    disconnect();
+    disconnectFromSource();
 }
 
 bool VideoGenerator::init( const SInitSettings & _settings ){
@@ -35,17 +35,10 @@ bool VideoGenerator::init( const SInitSettings & _settings ){
     m_state.settings = _settings;
     m_dataForTransfer.dataSettings = & m_state.settings;
 
-//    if( ! connect() ){
-//        return false;
-//    }
-
-
-
-
     return true;
 }
 
-bool VideoGenerator::connect(){
+bool VideoGenerator::connectToSource(){
 
     const SInitSettings & settings = m_state.settings;
 
@@ -94,7 +87,7 @@ bool VideoGenerator::connect(){
     return true;
 }
 
-void VideoGenerator::disconnect(){
+void VideoGenerator::disconnectFromSource(){
 
     if( ! m_gstPipeline ){
         return;
@@ -129,19 +122,20 @@ void VideoGenerator::disconnect(){
 
 gboolean VideoGenerator::callbackPushData( gpointer * _data ){
 
+    static constexpr gint SAMPLES_NUM = 1;
     SDataForTransfer * data = ( SDataForTransfer * )_data;
 
+    const guint64 pts = gst_util_uint64_scale( data->samplesNum, GST_SECOND, SAMPLE_RATE );
+
+    // get image for frame
     const std::pair<TConstDataPointer, TDataSize> & imgData = data->dataSettings->imageProvider->getImageData();
     const int32_t bytesCount = imgData.second;
     const void * dataSrc = imgData.first;
 
-    static constexpr gint SAMPLES_NUM = 1;    
-
     // create new empty buffer
     GstBuffer * buffer = gst_buffer_new_and_alloc( bytesCount );
 
-    // set its timestamp and duration
-    GST_BUFFER_TIMESTAMP( buffer ) = gst_util_uint64_scale( data->samplesNum, GST_SECOND, SAMPLE_RATE );
+    GST_BUFFER_TIMESTAMP( buffer ) = pts;
     GST_BUFFER_DURATION( buffer ) = gst_util_uint64_scale( SAMPLES_NUM, GST_SECOND, SAMPLE_RATE );
 
     // set data into buffer
@@ -157,7 +151,6 @@ gboolean VideoGenerator::callbackPushData( gpointer * _data ){
     GstFlowReturn rt;
     g_signal_emit_by_name( data->appsrc, "push-buffer", buffer, & rt );
 
-    // free the buffer now that we are done with it
     gst_buffer_unref( buffer );
 
     if( rt != GST_FLOW_OK ){
@@ -206,9 +199,22 @@ gboolean VideoGenerator::callbackGstSourceMessage( GstBus * _bus, GstMessage * _
 
         g_error_free( err );
         g_free( debug );
+        break;
+    }
+    case GST_MESSAGE_WARNING : {
+        GError * err;
+        gchar * debug;
+        gst_message_parse_warning( _message, & err, & debug );
 
-        g_main_loop_quit( (( VideoGenerator * )_userData)->m_glibMainLoop );
+        VS_LOG_ERROR << PRINT_HEADER
+                     << " received warning from GstObject: [" << _bus->object.name
+                     << "] msg: [" << err->message
+                     << "] Debug [" << debug
+                     << "]"
+                     << endl;
 
+        g_error_free( err );
+        g_free( debug );
         break;
     }
     case GST_MESSAGE_STATE_CHANGED : {
