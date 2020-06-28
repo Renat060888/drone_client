@@ -15,6 +15,8 @@ ImageFromDrone::ImageFromDrone()
     : m_frameDescr(nullptr)
     , m_trFrameAndTelemetryDump(nullptr)
     , m_shutdownCalled(false)
+    , m_widthViaOpenCV(0)
+    , m_heightViaOpenCV(0)
 {
     QObject::connect( & rfv, SIGNAL(lastFrameChanged(QByteArray &)),
                      this, SLOT(slotLastFrameChanged(QByteArray &))
@@ -62,6 +64,7 @@ bool ImageFromDrone::init( const SInitSettings & _settings ){
     }
     
     rfv.setCalcFps( true );
+    rfv.setAutoParse( true );
 
     if( m_settings.dumpIncomingData ){
         m_trFrameAndTelemetryDump = new std::thread( & ImageFromDrone::threadFrameAndTelemetryDump, this );
@@ -71,7 +74,7 @@ bool ImageFromDrone::init( const SInitSettings & _settings ){
     return true;
 }
 
-void ImageFromDrone::callbackSwitchOn( bool _on ){
+void ImageFromDrone::callbackSwitchOn( bool _on, const std::string _runSettings ){
 
     // TODO: do
 }
@@ -112,6 +115,15 @@ void ImageFromDrone::slotLastFrameChanged( QByteArray & _frame ){
     m_droneCurrentFrame = _frame;
     m_muCurrentFrame.unlock();
 
+    // send camera FOV
+    if( rfv.autoParse() ){
+        OwlDeviceInputData::OwlDeviceFrameDescriptor * frameDescr = rfv.frameDescriptor();
+        for( IDroneStateObserver * observer : m_observers ){
+            observer->callbackCameraFOVChanged( frameDescr->frameHeight() ); // no matter: height or width, both are the same
+        }
+    }
+
+    // dump raw unchecked data
     if( m_settings.dumpIncomingData ){
         SDumpData toDump;
         toDump.frameBytes = _frame;
@@ -121,21 +133,28 @@ void ImageFromDrone::slotLastFrameChanged( QByteArray & _frame ){
         m_muDumpQueue.unlock();
     }
 
+    // check data validity (1)
 	if( m_droneCurrentFrame.isEmpty() ){
 		return;
 	}
     
+    // get frame's props
     if( ! m_frameDescr ){
+        const std::vector<char> vecForParams( m_droneCurrentFrame.begin(), m_droneCurrentFrame.end() );
+        const cv::Mat decodedImage = cv::imdecode( vecForParams, 1 );
+
+        // check data validity (2)
+        if( 0 == decodedImage.cols || 0 == decodedImage.rows ){
+            return;
+        }
+
+        m_widthViaOpenCV = decodedImage.cols;
+        m_heightViaOpenCV = decodedImage.rows;
+
 		m_mutexImageDescrRef.lock();
         m_frameDescr = new OwlDeviceInputData::OwlDeviceFrameDescriptor();
         ( * m_frameDescr ) = rfv.parseFrameDescriptor( _frame );
-        m_mutexImageDescrRef.unlock();
-        
-        const std::vector<char> vecForParams( m_droneCurrentFrame.begin(), m_droneCurrentFrame.end() );
-		const cv::Mat decodedImage = cv::imdecode( vecForParams, 1 );
-
-		m_widthViaOpenCV = decodedImage.cols;
-		m_heightViaOpenCV = decodedImage.rows;
+        m_mutexImageDescrRef.unlock();        
         
         m_signalFirstFrameFromDrone();
     }    
@@ -177,7 +196,9 @@ SImageProperties ImageFromDrone::getImageProperties(){
     return out;
 }
 
-
+void ImageFromDrone::addObserver( IDroneStateObserver * _observer ){
+    m_observers.push_back( _observer );
+}
 
 
 

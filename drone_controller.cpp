@@ -14,6 +14,8 @@ static constexpr const char * PRINT_HEADER = "DroneController:";
 static constexpr double ANGLES_IN_ZOOM_UNIT = ( 57.8 - 2.0 ) / 255.0;
 static constexpr int ZOOM_STEP = 2;
 
+#define RAD_TO_DEG( x )( (180.0f / M_PI) * (x) )
+
 DroneController::DroneController()
     : m_shutdownCalled(false)
     , m_azimutAbsDeg(0.0)
@@ -47,6 +49,10 @@ DroneController::DroneController()
 DroneController::~DroneController()
 {
 
+}
+
+void DroneController::addObserver( IDroneStateObserver * _observer ){
+    m_observers.push_back( _observer );
 }
 
 bool DroneController::init( const SInitSettings & _settings ){
@@ -273,7 +279,7 @@ void DroneController::slotBoardPosChanged( OwlDeviceInputData::BoardPosition * _
 
     if( ! m_settings.imitationEnable ){
         for( IDroneStateObserver * observer : m_observers ){
-            observer->callbackBoardPositionChanged( _boardPos->latitude(), _boardPos->longitude(), _boardPos->altitude() );
+            observer->callbackBoardPositionChanged( RAD_TO_DEG(_boardPos->latitude()), RAD_TO_DEG(_boardPos->longitude()), _boardPos->altitude() );
         }
     }
 }
@@ -282,7 +288,8 @@ void DroneController::slotRpzLensChanged( OwlDeviceInputData::RollPitchZoomLens 
 
     if( ! m_settings.imitationEnable ){
         for( IDroneStateObserver * observer : m_observers ){
-            observer->callbackCameraPositionChanged( _rpzLens->pitch(), _rpzLens->roll(), 0, _rpzLens->zoom() );
+            // NOTE: angles inverse (!) roll <-> pitch
+            observer->callbackCameraPositionChanged( _rpzLens->roll(), _rpzLens->pitch(), 0, _rpzLens->zoom() );
         }
     }
 }
@@ -292,7 +299,7 @@ void DroneController::slotRpzLensChanged( OwlDeviceInputData::RollPitchZoomLens 
 // ----------------------------------------------------------------------
 
 // system
-void DroneController::callbackSwitchOn( bool _on ){
+void DroneController::callbackSwitchOn( bool _on, const std::string _runSettings ){
 
     // TODO: do
 }
@@ -503,9 +510,6 @@ void DroneController::callbackSetTargetCoord( float lat, float lon, int alt ){
     rfc.setTargetCoord( lat, lon, alt );
 }
 
-void DroneController::addObserver( IDroneStateObserver * _observer ){
-    m_observers.push_back( _observer );
-}
 
 
 

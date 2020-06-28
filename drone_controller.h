@@ -46,7 +46,7 @@ private:
     virtual void callbackSetShowTelemetry( bool _show ) override;
     virtual void callbackStartVideoStream( bool _start ) override;
 
-    virtual void callbackSwitchOn( bool _on ) override;
+    virtual void callbackSwitchOn( bool _on, const std::string _runSettings ) override;
 
     void droneActivityImitation();
     void checkPings();

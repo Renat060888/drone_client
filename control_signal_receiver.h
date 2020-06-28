@@ -55,8 +55,8 @@ private:
     objrepr::SpatialObjectPtr m_cameraObject;
     objrepr::DynamicAttributeMapPtr m_attrMap;
     objrepr::SpatialObjectPtr m_holdPointObject;
-    uint64_t m_holdPointObjectId;
 #endif
+    uint64_t m_holdPointObjectId;
 
     // service
 

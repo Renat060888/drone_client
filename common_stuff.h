@@ -24,7 +24,7 @@ class ISystemObserver {
 public:
     virtual ~ISystemObserver(){}
 
-    virtual void callbackSwitchOn( bool _on ) = 0;
+    virtual void callbackSwitchOn( bool _on, const std::string _runSettings ) = 0;
 
 };
 

@@ -76,6 +76,6 @@ void DroneImitator::callbackStartVideoStream( bool _start ){
 
 }
 
-void DroneImitator::callbackSwitchOn( bool _on ){
+void DroneImitator::callbackSwitchOn( bool _on, const std::string _runSettings ){
 
 }

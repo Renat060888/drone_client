@@ -71,7 +71,7 @@ bool ControlSignalReceiver::init( const SInitSettings & _settings ){
 // drone state callbacks
 void ControlSignalReceiver::callbackBoardPositionChanged( double _lat, double _lon, double _alt ){
 #ifdef OBJREPR_LIBRARY_EXIST
-    objrepr::GeoCoord coords( _lat, _lon, _alt );
+    objrepr::GeoCoord coords( _lon, _lat, _alt );
     objrepr::CoordTransform::instance()->EPSG4326_EPSG4978( & coords );
 
     m_carrierObject->setTemporalState( objrepr::SpatialObject::TemporalState::TS_Active );
@@ -144,7 +144,7 @@ void ControlSignalReceiver::callbackCameraFOVChanged( double _angle ){
 void ControlSignalReceiver::callbackObjectUpdated( uint64_t _id ){
 
     VS_LOG_INFO << PRINT_HEADER << "objrepr object updated: " << _id << endl;
-
+#ifdef OBJREPR_LIBRARY_EXIST
     if( m_holdPointObject ){
         for( IControlSignalsObserver * observer : m_observers ){
             const objrepr::GeoCoord coord = m_holdPointObject->point( 0, 0 );
@@ -166,6 +166,7 @@ void ControlSignalReceiver::callbackObjectUpdated( uint64_t _id ){
             observer->callbackSetTargetCoord( coord.y, coord.x, coord.h );
         }
     }
+#endif
 }
 
 void ControlSignalReceiver::callbackAttrUpdated( const std::string & _attrName ){
@@ -332,7 +333,7 @@ void ControlSignalReceiver::callbackApprovePending( const std::string _attrName 
         VS_LOG_INFO << PRINT_HEADER << " settings content [" << settingsStr << "]" << endl;
 
         for( ISystemObserver * observer : m_observersSystem ){
-            observer->callbackSwitchOn( true );
+            observer->callbackSwitchOn( true, settingsStr );
         }
     }
     else{

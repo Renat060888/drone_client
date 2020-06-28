@@ -34,6 +34,7 @@ public:
     ~ImageFromDrone();
 
     bool init( const SInitSettings & _settings );
+    void addObserver( IDroneStateObserver * _observer );
 
     virtual std::pair<TConstDataPointer, TDataSize> getImageData() override;
     virtual SImageProperties getImageProperties() override;
@@ -46,7 +47,7 @@ private slots:
 
 
 private:
-    virtual void callbackSwitchOn( bool _on ) override;
+    virtual void callbackSwitchOn( bool _on, const std::string _runSettings ) override;
 
     void threadFrameAndTelemetryDump();
 
@@ -54,6 +55,7 @@ private:
     QByteArray m_droneCurrentFrame;
     OwlDeviceInputData::OwlDeviceFrameDescriptor * m_frameDescr;
     SInitSettings m_settings;
+    std::vector<IDroneStateObserver *> m_observers;
 
     cv::Mat m_currentImage;
     std::vector<unsigned char> m_currentImageBytes;
